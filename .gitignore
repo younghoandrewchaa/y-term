@@ -5,3 +5,27 @@ out/
 .DS_Store
 *.log
 test-results/
+
+# Local environment files (keep safe templates trackable).
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+# Private keys and release signing material.
+*.key
+*.pem
+*.p8
+*.p12
+*.pfx
+*.cer
+*.cert
+*.mobileprovision
+*.provisionprofile
+*.keychain
+*.keychain-db
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519

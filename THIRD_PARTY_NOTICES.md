@@ -8,4 +8,4 @@ Y-Term uses the following runtime projects. Their copyright and licence files re
 | xterm.js, fit, search and web-links addons | MIT | https://github.com/xtermjs/xterm.js |
 | node-pty | MIT | https://github.com/microsoft/node-pty |
 
-Electron distributions include `LICENSE` and `LICENSES.chromium.html`. Preserve these in release artifacts. Before public release, audit the installed dependency tree and packaged app to confirm all applicable notices are included; the dependency tree has not yet been installed or audited in this workspace.
+Electron distributions include `LICENSE` and `LICENSES.chromium.html`. Preserve these in release artifacts. Dependencies have been installed and an Apple Silicon app and ZIP have been built. A complete audit of third-party licence notices in the installed dependency tree and packaged artifacts remains pending before public release.
