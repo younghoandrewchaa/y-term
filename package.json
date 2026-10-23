@@ -1,0 +1,44 @@
+{
+  "name": "y-term",
+  "productName": "Y-Term",
+  "version": "0.1.0",
+  "description": "A focused macOS terminal built with Electron and xterm.js",
+  "private": true,
+  "type": "module",
+  "author": "Youngho",
+  "license": "MIT",
+  "main": "dist/main/index.cjs",
+  "engines": {
+    "node": ">=24.13.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && electron-forge start",
+    "package": "npm run build && electron-forge package --platform=darwin --arch=arm64",
+    "make": "npm run build && electron-forge make --platform=darwin --arch=arm64",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test:e2e": "npm run build && node --experimental-strip-types scripts/smoke.ts",
+    "rebuild": "electron-rebuild --force --only node-pty",
+    "postinstall": "npm run rebuild",
+    "test:packaged": "Y_TERM_EXECUTABLE=\"out/Y-Term-darwin-arm64/Y-Term.app/Contents/MacOS/Y-Term\" node --experimental-strip-types scripts/smoke.ts",
+    "test:pty": "ELECTRON_RUN_AS_NODE=1 electron --experimental-strip-types --test tests/pty.integration.ts"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "0.10.0",
+    "@xterm/addon-search": "0.15.0",
+    "@xterm/addon-web-links": "0.11.0",
+    "@xterm/xterm": "5.5.0",
+    "node-pty": "1.1.0"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "7.11.2",
+    "@electron-forge/maker-zip": "7.11.2",
+    "@electron/rebuild": "4.0.3",
+    "@types/node": "24.12.4",
+    "electron": "42.3.0",
+    "esbuild": "0.27.7",
+    "playwright": "1.64.1",
+    "typescript": "6.0.3"
+  }
+}

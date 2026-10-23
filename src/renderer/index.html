@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Y-Term</title>
+  <link rel="stylesheet" href="./app.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <header>
+    <div id="tabs" role="tablist" aria-label="Terminal tabs"></div>
+    <button id="new-tab" aria-label="New tab" title="New tab (⌘T)">+</button>
+    <button id="settings-open" aria-label="Settings" title="Settings (⌘,)">⚙</button>
+  </header>
+  <aside id="find-bar" hidden>
+    <input id="find-input" type="search" placeholder="Find in terminal" aria-label="Find in terminal">
+    <button id="find-previous" aria-label="Previous match">↑</button>
+    <button id="find-next" aria-label="Next match">↓</button>
+    <span id="find-status" role="status"></span>
+    <button id="find-close" aria-label="Close search">×</button>
+  </aside>
+  <main id="panels"></main>
+  <footer><span id="message" role="status">Local shells · ⌘T new tab · ⌘F find · ⌘-click opens links</span></footer>
+  <dialog id="settings">
+    <form id="settings-form">
+      <h1>Settings</h1>
+      <label>Font family<input name="fontFamily" required maxlength="200"></label>
+      <label>Font size<input name="fontSize" type="number" min="9" max="36" required></label>
+      <label>Theme<select name="theme"><option value="dark">Dark</option><option value="light">Light</option></select></label>
+      <label>Scrollback lines<input name="scrollback" type="number" min="100" max="100000" required></label>
+      <label>Shell executable<input name="shell" required placeholder="/bin/zsh"></label>
+      <label>Starting directory<input name="cwd" required placeholder="/Users/you"></label>
+      <p>Shell and directory changes apply to new tabs. Reopening the app starts fresh shells; live processes are not restored.</p>
+      <p id="settings-error" role="alert"></p>
+      <div class="dialog-actions"><button type="button" id="settings-cancel">Cancel</button><button type="submit">Save</button></div>
+    </form>
+  </dialog>
+  <dialog id="paste-dialog">
+    <h1>Paste multiple lines?</h1><p>This text may execute several shell commands.</p>
+    <pre id="paste-preview"></pre>
+    <form method="dialog" class="dialog-actions"><button value="cancel">Cancel</button><button value="paste">Paste</button></form>
+  </dialog>
+</body>
+</html>

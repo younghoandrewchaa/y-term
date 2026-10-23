@@ -1,0 +1,26 @@
+import { contextBridge, ipcRenderer } from 'electron';
+import type { IpcRendererEvent } from 'electron';
+import type { MenuAction, TerminalAPI, TerminalEvent } from '../shared/terminal-protocol.ts';
+
+const api: TerminalAPI = {
+  create: size => ipcRenderer.invoke('terminal:create', size),
+  ready: id => ipcRenderer.send('terminal:ready', id),
+  write: (id, data, binary = false) => ipcRenderer.send('terminal:write', id, data, binary),
+  resize: (id, cols, rows) => ipcRenderer.send('terminal:resize', id, cols, rows),
+  acknowledge: (id, sequence) => ipcRenderer.send('terminal:ack', id, sequence),
+  close: id => ipcRenderer.invoke('terminal:close', id),
+  onEvent: listener => {
+    const receive = (_event: IpcRendererEvent, value: TerminalEvent) => listener(value);
+    ipcRenderer.on('terminal:event', receive);
+    return () => { ipcRenderer.removeListener('terminal:event', receive); };
+  },
+  onAction: listener => {
+    const receive = (_event: IpcRendererEvent, value: MenuAction) => listener(value);
+    ipcRenderer.on('terminal:action', receive);
+    return () => { ipcRenderer.removeListener('terminal:action', receive); };
+  },
+  getPreferences: () => ipcRenderer.invoke('preferences:get'),
+  savePreferences: value => ipcRenderer.invoke('preferences:save', value),
+  openLink: url => ipcRenderer.invoke('terminal:open-link', url),
+};
+contextBridge.exposeInMainWorld('terminal', api);
