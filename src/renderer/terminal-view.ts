@@ -4,6 +4,7 @@ import { SearchAddon } from '@xterm/addon-search';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import type { Preferences } from '../shared/terminal-protocol.ts';
 import { TerminalSession } from './terminal-session.ts';
+import { attachTerminalFileDrop } from './file-drop.ts';
 
 export class TerminalView {
   readonly terminal: Terminal;
@@ -12,6 +13,8 @@ export class TerminalView {
   private session: TerminalSession;
   private observer: ResizeObserver;
   private disposed = false;
+  private exited = false;
+  private removeFileDrop: () => void;
   private host: HTMLElement;
 
   constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, confirmPaste: (text: string) => Promise<boolean>) {
@@ -26,7 +29,15 @@ export class TerminalView {
     this.terminal.open(host);
     this.session = new TerminalSession(window.terminal, {
       write: (data, processed) => this.terminal.write(data, processed),
-      exited: message => { this.terminal.options.disableStdin = true; status(message); },
+      exited: message => { this.exited = true; this.terminal.options.disableStdin = true; status(message); },
+    });
+    this.removeFileDrop = attachTerminalFileDrop(host, {
+      canPaste: () => !!this.session.id && !this.exited && !this.disposed && host.isConnected
+        && !host.closest('[hidden]') && !document.querySelector('dialog[open]'),
+      getPathForFile: file => window.terminal.getPathForFile(file),
+      paste: text => this.terminal.paste(text),
+      focus: () => this.terminal.focus(),
+      report: status,
     });
     this.terminal.onData(data => { if (this.session.id) window.terminal.write(this.session.id, data); });
     this.terminal.onBinary(data => { if (this.session.id) window.terminal.write(this.session.id, data, true); });
@@ -71,6 +82,7 @@ export class TerminalView {
   async close(): Promise<void> {
     if (this.disposed) return;
     this.disposed = true;
+    this.removeFileDrop();
     this.observer.disconnect();
     this.terminal.dispose();
     await this.session.close();
