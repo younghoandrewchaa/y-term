@@ -40,7 +40,7 @@ npm run test:packaged
 npm run make
 ```
 
-The smoke test launches real Electron and real PTYs using a temporary settings directory. It executes shell commands, resizes the window, switches and closes independent tabs, and checks URL restrictions. `test:packaged` runs the same checks against `out/Y-Term-darwin-arm64/Y-Term.app/Contents/MacOS/Y-Term`. Packaging unpacks node-pty so its native binding and spawn helper remain accessible. `npm run make` creates a ZIP in `out/make`.
+The smoke test launches real Electron and real PTYs using a temporary settings directory. It executes shell commands, resizes the window, switches and closes independent tabs, and checks URL restrictions. `test:packaged` runs the same checks against `out/Y-Term-darwin-arm64/Y-Term.app/Contents/MacOS/Y-Term`. Packaging unpacks node-pty so its native binding and spawn helper remain accessible. `npm run make` creates a ZIP and a DMG in `out/make`.
 
 Automated checks supplement these manual packaged-app checks:
 
@@ -57,6 +57,14 @@ Verified in this workspace: typecheck, build, 21 unit tests, two real-PTY integr
 For offline packaging with an already downloaded Electron archive, set `ELECTRON_ZIP_DIR` to the directory containing `electron-v42.3.0-darwin-arm64.zip` before running `npm run package` or `npm run make`.
 
 ## Public release
+
+From a clean, committed checkout on macOS, authenticate the GitHub CLI with `gh auth login`, then run:
+
+```sh
+npm run release -- "Release notes"
+```
+
+The script runs unit tests and typechecking, builds the Apple Silicon ZIP and DMG using `npm run make`, tags the current commit as `v<package.json version>`, and pushes the tag to `origin`. It uploads both files through a draft GitHub release and then publishes it as the latest release. An existing draft can be retried; a public release is never overwritten. Bump the package version before creating another release. Without the notes argument, the script prompts in an interactive terminal. The DMG is created at `out/make/Y-Term-darwin-arm64-<version>.dmg`.
 
 Local packaging is unsigned unless `APPLE_SIGN_IDENTITY` is provided. To also request notarization, provide `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` through your release environment. Do not commit credentials. Signing, notarization, Gatekeeper assessment of the downloaded artifact, and clean-machine validation are release requirements still pending. Intel builds are outside the current target.
 

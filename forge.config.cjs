@@ -21,5 +21,16 @@ module.exports = {
     } : {}),
   },
   rebuildConfig: { onlyModules: ['node-pty'] },
-  makers: [{ name: '@electron-forge/maker-zip', platforms: ['darwin'] }],
+  makers: [
+    { name: '@electron-forge/maker-zip', platforms: ['darwin'] },
+    {
+      name: '@electron-forge/maker-dmg',
+      platforms: ['darwin'],
+      config: (arch) => ({
+        name: `Y-Term-darwin-${arch}-${require('./package.json').version}`,
+        format: 'ULFO',
+        icon: 'assets/icon.icns',
+      }),
+    },
+  ],
 };
