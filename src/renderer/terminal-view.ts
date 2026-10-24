@@ -40,6 +40,15 @@ export class TerminalView {
       report: status,
     });
     this.terminal.onData(data => { if (this.session.id) window.terminal.write(this.session.id, data); });
+    this.terminal.attachCustomKeyEventHandler(event => {
+      if (event.key !== 'Enter' || !event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return true;
+      if (event.type === 'keydown') {
+        event.preventDefault();
+        // CSI u preserves Shift so terminal agents can insert a newline.
+        this.terminal.input('\x1b[13;2u');
+      }
+      return false;
+    });
     this.terminal.onBinary(data => { if (this.session.id) window.terminal.write(this.session.id, data, true); });
     this.terminal.onResize(({ cols, rows }) => {
       this.session.resize(cols, rows);

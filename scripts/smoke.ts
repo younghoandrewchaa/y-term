@@ -27,6 +27,26 @@ try {
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => (window as unknown as { smokeOutput: string }).smokeOutput.includes('YTERM_SHELL_OK'));
   await page.waitForFunction(() => document.querySelector('[role=tabpanel]:not([hidden]) .xterm-rows')?.textContent?.includes('YTERM_SHELL_OK'));
+  // Observe real keyboard input at the main-process boundary, including any
+  // accidental duplicate carriage return from xterm's default key handling.
+  await application.evaluate(({ ipcMain }) => {
+    const state = { writes: [] as string[], listener: (_event: unknown, _id: string, data: string) => { state.writes.push(data); } };
+    (globalThis as unknown as { keyboardSmoke: typeof state }).keyboardSmoke = state;
+    ipcMain.on('terminal:write', state.listener);
+  });
+  try {
+    await page.keyboard.press('Shift+Enter');
+    await page.keyboard.press('Enter');
+    await page.evaluate(() => window.terminal.getPreferences());
+    const writes = await application.evaluate(() => (globalThis as unknown as { keyboardSmoke: { writes: string[] } }).keyboardSmoke.writes);
+    assert.deepEqual(writes, ['\x1b[13;2u', '\r'], 'Shift+Enter must send modified Enter once; Enter must still submit');
+  } finally {
+    await application.evaluate(({ ipcMain }) => {
+      const state = (globalThis as unknown as { keyboardSmoke: { listener: (...args: unknown[]) => void } }).keyboardSmoke;
+      ipcMain.removeListener('terminal:write', state.listener);
+    });
+  }
+  await page.keyboard.press('Control+u');
   await page.keyboard.type("printf 'YTERM_BEFORE:'; stty size");
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => /YTERM_BEFORE:\d+\s+\d+/.test((window as unknown as { smokeOutput: string }).smokeOutput));
@@ -77,7 +97,7 @@ try {
   });
   assert.equal(rejected, true);
   assert.deepEqual(errors, []);
-  console.log('PASS: shell commands, file/folder drops, window resize, independent tabs, closure, and URL policy.');
+  console.log('PASS: shell commands, Shift+Enter, file/folder drops, window resize, independent tabs, closure, and URL policy.');
 } finally {
   await application.close();
   await rm(directory, { recursive: true, force: true });
