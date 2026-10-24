@@ -1,6 +1,6 @@
 # File and Folder Drop Paths Implementation Plan
 
-> **For agentic workers:** Use superpowers:executing-plans to implement this plan task by task. Steps use checkbox (`- [ ]`) syntax for tracking. This document is a proposed plan; implementation has not been requested.
+> **For agentic workers:** Use superpowers:executing-plans to implement this plan task by task. Steps use checkbox (`- [ ]`) syntax for tracking. Implementation authorized and completed; native Finder/editor acceptance remains pending as recorded below.
 
 **Goal:** Drop files or folders from Finder into a terminal and insert their absolute paths at the input cursor.
 
@@ -59,12 +59,12 @@ Reference: [Electron webUtils documentation](https://github.com/electron/electro
 
 **Interfaces:** Expose `TerminalAPI.getPathForFile(file: File): string` synchronously. Export `formatDroppedPaths(paths: readonly string[]): string` from `file-drop.ts`; return `''` for an empty batch and throw a user-readable error for any invalid path.
 
-- [ ] Add unit tests for a simple file, directory, multiple paths, spaces, Unicode, apostrophes, backslashes, `$()`, backticks, semicolons, wildcards, and preserved order. Assert `formatDroppedPaths(['/tmp/a', '/tmp/b'])` is `"'/tmp/a' '/tmp/b' "`.
-- [ ] Add assertions that empty input returns `''`; relative paths, empty paths, NUL, tab, CR, LF, escape, and DEL throw. A batch with one valid and one invalid path must throw rather than return partial text.
-- [ ] Run `node --experimental-strip-types --test tests/file-drop.test.ts`; confirm failure because the formatter is absent.
-- [ ] Implement validation and Unix single-quote formatting. Add the typed bridge method using `webUtils` imported from Electron in preload. Return the native API result; let invalid File errors reach the caller's catch handler. Do not expose Electron objects or add an IPC channel.
-- [ ] Run the focused test and `npm run typecheck`; require both to pass. Check existing typed API fixtures for necessary updates.
-- [ ] Commit as `feat: resolve and quote dropped file paths`.
+- [x] Add unit tests for a simple file, directory, multiple paths, spaces, Unicode, apostrophes, backslashes, `$()`, backticks, semicolons, wildcards, and preserved order. Assert `formatDroppedPaths(['/tmp/a', '/tmp/b'])` is `"'/tmp/a' '/tmp/b' "`.
+- [x] Add assertions that empty input returns `''`; relative paths, empty paths, NUL, tab, CR, LF, escape, and DEL throw. A batch with one valid and one invalid path must throw rather than return partial text.
+- [x] Run `node --experimental-strip-types --test tests/file-drop.test.ts`; confirm failure because the formatter is absent.
+- [x] Implement validation and Unix single-quote formatting. Add the typed bridge method using `webUtils` imported from Electron in preload. Return the native API result; let invalid File errors reach the caller's catch handler. Do not expose Electron objects or add an IPC channel.
+- [x] Run the focused test and `npm run typecheck`; require both to pass. Check existing typed API fixtures for necessary updates.
+- [x] Commit as `feat: resolve and quote dropped file paths`.
 
 ## Task 2: Route drops into the receiving terminal
 
@@ -72,14 +72,14 @@ Reference: [Electron webUtils documentation](https://github.com/electron/electro
 
 **Interfaces:** Export `attachTerminalFileDrop(host: HTMLElement, callbacks: FileDropCallbacks): () => void`. Define `FileDropCallbacks` in the same module with `canPaste(): boolean`, `getPathForFile(file: File): string`, `paste(text: string): void`, `focus(): void`, and `report(message: string): void`. The returned function removes all listeners.
 
-- [ ] Add handler tests using an `EventTarget`-based host fixture and injected callbacks. Cover `dragover` with `types: ['Files']` but an empty protected `files` list, native-file drops, folders represented as one File, multiple files, and events originating at a nested terminal element. Assert file events prevent default and a valid drop calls paste/focus exactly once.
-- [ ] Cover text-only drags (no interception), lookup returning `''`, lookup throwing, invalid mixed batches, `canPaste() === false`, and invocation after listener cleanup. Assert rejected drops never call paste; path failures call report without an uncaught exception.
-- [ ] Run the focused test; confirm the new handler tests fail before implementation.
-- [ ] Implement capture-phase host `dragover`/`drop` listeners to intercept file drags before xterm can handle them. Resolve the FileList synchronously, format the entire batch, recheck availability, paste once, and focus. Catch resolution/validation failures and report them. Use `types` to recognize Files during dragover, and the actual FileList during drop; directories need no content traversal.
-- [ ] Integrate with `TerminalView`: store the cleanup callback; set a local session-exited flag in its existing `exited` callback; make availability require a session ID, no exit/disposal, a visible panel, and no `dialog[open]`. Pass `terminal.paste`, `terminal.focus`, the preload resolver, and the existing status callback. Remove listeners in `close()`.
-- [ ] In `app.ts`, add bubbling document `dragover`/`drop` guards that only prevent default for file drags. They must not resolve paths or insert text. This catches drops on tabs, settings, or empty app areas without interfering with host handlers.
-- [ ] Run `npm test` and `npm run typecheck`; require passing results. Review that each host owns its own callback closures and no async path-resolution race exists.
-- [ ] Commit as `feat: paste file and folder drops into terminal input`.
+- [x] Add handler tests using an `EventTarget`-based host fixture and injected callbacks. Cover `dragover` with `types: ['Files']` but an empty protected `files` list, native-file drops, folders represented as one File, multiple files, and events originating at a nested terminal element. Assert file events prevent default and a valid drop calls paste/focus exactly once.
+- [x] Cover text-only drags (no interception), lookup returning `''`, lookup throwing, invalid mixed batches, `canPaste() === false`, and invocation after listener cleanup. Assert rejected drops never call paste; path failures call report without an uncaught exception.
+- [x] Run the focused test; confirm the new handler tests fail before implementation.
+- [x] Implement capture-phase host `dragover`/`drop` listeners to intercept file drags before xterm can handle them. Resolve the FileList synchronously, format the entire batch, recheck availability, paste once, and focus. Catch resolution/validation failures and report them. Use `types` to recognize Files during dragover, and the actual FileList during drop; directories need no content traversal.
+- [x] Integrate with `TerminalView`: store the cleanup callback; set a local session-exited flag in its existing `exited` callback; make availability require a session ID, no exit/disposal, a visible panel, and no `dialog[open]`. Pass `terminal.paste`, `terminal.focus`, the preload resolver, and the existing status callback. Remove listeners in `close()`.
+- [x] In `app.ts`, add bubbling document `dragover`/`drop` guards that only prevent default for file drags. They must not resolve paths or insert text. This catches drops on tabs, settings, or empty app areas without interfering with host handlers.
+- [x] Run `npm test` and `npm run typecheck`; require passing results. Review that each host owns its own callback closures and no async path-resolution race exists.
+- [x] Commit as `feat: paste file and folder drops into terminal input`.
 
 ## Task 3: Verify the bridge and real shell behavior
 
@@ -87,15 +87,23 @@ Reference: [Electron webUtils documentation](https://github.com/electron/electro
 
 **Interfaces:** Use Task 1's bridge and Task 2's terminal host events. Keep fixtures in the smoke harness's existing temporary directory and clean them up in its `finally` block.
 
-- [ ] Extend the smoke harness with real file and directory fixtures, including spaces, Unicode, an apostrophe, and shell metacharacters. Obtain disk-backed Files via Playwright's file-input support in the Electron renderer, then build a DataTransfer and dispatch dragover/drop onto a nested element of the active terminal. Do not replace the production path resolver or use `new File()` as evidence of native path resolution.
-- [ ] Assert the real bridge returns the fixture's absolute path; assert a JS-created `new File()` returns `''`. First run `npm run test:e2e` against the current behavior and confirm the new drop assertions fail. GUI commands require execution outside the sandbox.
-- [ ] After Tasks 1–2, assert a drop alone produces no command-result marker before Enter; after explicit Enter, a command that prints its arguments receives the exact original paths and argument count. Include a second tab and assert the inactive shell receives nothing. Check `pageerror` remains empty and the page URL is unchanged.
+- [x] Extend the smoke harness with real file and directory fixtures, including spaces, Unicode, an apostrophe, and shell metacharacters. Obtain disk-backed Files via Playwright's file-input support in the Electron renderer, then build a DataTransfer and dispatch dragover/drop onto a nested element of the active terminal. Do not replace the production path resolver or use `new File()` as evidence of native path resolution.
+- [x] Assert the real bridge returns the fixture's absolute path; assert a JS-created `new File()` returns `''`. First run `npm run test:e2e` against the current behavior and confirm the new drop assertions fail. GUI commands require execution outside the sandbox.
+- [x] After Tasks 1–2, assert a drop alone produces no command-result marker before Enter; after explicit Enter, a command that prints its arguments receives the exact original paths and argument count. Include a second tab and assert the inactive shell receives nothing. Check `pageerror` remains empty and the page URL is unchanged.
 - [ ] Keep native Finder acceptance separate: synthesized events cannot prove macOS directory delivery. In the running app, drop a Finder file, folder, mixed selection, and a folder containing files; verify only selected paths appear, exactly once. Check a typed `cd ` prefix, drop outside the terminal, an exited tab, open settings, tab closure, and ordinary text/clipboard paste.
 - [ ] Exercise the quoting fixtures in zsh and bash; try fish if installed. Check bracketed paste inside an editor. If native folder drops expose a platform-specific limitation, resolve it before declaring folder support complete.
-- [ ] Add a README Use bullet describing file/folder drops, multiple items, quoted absolute paths, no automatic execution, and control-character rejection.
-- [ ] Run `npm test`, `npm run typecheck`, `npm run build`, and `npm run test:e2e`; require success. Record any environment blocker and exact remaining manual checks rather than claiming they passed. No packaging/release is required for this feature plan.
-- [ ] Commit as `test: verify native file drop paths and document usage`.
+- [x] Add a README Use bullet describing file/folder drops, multiple items, quoted absolute paths, no automatic execution, and control-character rejection.
+- [x] Run `npm test`, `npm run typecheck`, `npm run build`, and `npm run test:e2e`; require success. Record any environment blocker and exact remaining manual checks rather than claiming they passed. No packaging/release is required for this feature plan.
+- [x] Commit as `test: verify native file drop paths and document usage`.
 
 ## Completion criteria
 
 A real Finder file or folder lands as a usable quoted argument in the receiving live terminal; multiple selections preserve their paths and order. Enter remains a separate user action. Path lookup works through the real isolated preload bridge, ordinary input still works, and the automated checks plus native Finder acceptance above have recorded results.
+
+## Execution results
+
+- Implemented on `feat/file-drop-paths`; smoke coverage lives in `scripts/file-drop-smoke.ts` and is called by the existing smoke harness.
+- Verified: 39 unit tests, typecheck, build, and real Electron smoke pass. The smoke test uses actual disk-backed file and directory Files, the isolated preload bridge, real PTY writes, and exact shell argument output.
+- Negative smoke check: temporarily disabling drop input fails with zero pastes instead of one; restoring input passes.
+- Independent read-only review: no actionable findings.
+- Remaining manual acceptance: native Finder file/folder/mixed-selection drags and bracketed paste inside an editor. Quoting round trips pass in zsh and bash; fish is not installed. Packaging/release was outside scope.

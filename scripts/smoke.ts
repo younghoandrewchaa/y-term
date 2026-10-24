@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { verifyFileDrops } from './file-drop-smoke.ts';
 
 const directory = await mkdtemp(join(tmpdir(), 'y-term-smoke-'));
 const executablePath = process.env.Y_TERM_EXECUTABLE;
@@ -50,6 +51,7 @@ try {
   await page.keyboard.type("cd /private/tmp; printf 'YTERM_%s:%s\\n' 'TAB_TWO' \"$PWD\"");
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => (window as unknown as { smokeOutput: string }).smokeOutput.includes('YTERM_TAB_TWO:/private/tmp'));
+  await verifyFileDrops(application, page, directory);
   await page.locator('[role=tab]').first().click();
   await page.locator('[role=tabpanel]:not([hidden]) .xterm-helper-textarea').focus();
   await page.keyboard.type("printf 'YTERM_%s\\n' 'FIRST_ALIVE'");
@@ -75,7 +77,7 @@ try {
   });
   assert.equal(rejected, true);
   assert.deepEqual(errors, []);
-  console.log('PASS: shell commands, window resize, independent tabs, closure, and URL policy.');
+  console.log('PASS: shell commands, file/folder drops, window resize, independent tabs, closure, and URL policy.');
 } finally {
   await application.close();
   await rm(directory, { recursive: true, force: true });

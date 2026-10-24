@@ -19,6 +19,7 @@ npm start
 
 - ⌘T creates a tab; ⌘W closes the current tab and immediately terminates its shell and child programs. Control-Tab and Control-Shift-Tab switch tabs.
 - ⌘C and ⌘V copy and paste using the macOS Edit menu. Control-C remains the shell interrupt key. Multiline paste asks for confirmation.
+- Drag files or folders from Finder into a terminal to insert their quoted absolute paths. Multiple items become separate arguments followed by a space; press Enter yourself to run the command. Paths containing control characters (including tabs and newlines) are rejected.
 - ⌘F searches the active terminal; Enter and Shift-Enter move between matches; Escape closes search.
 - ⌘+ / ⌘− change font size, ⌘0 resets it, and ⌘K clears the display.
 - ⌘-click or Control-click activates HTTP/HTTPS links. Other URL schemes are rejected by the main process.
