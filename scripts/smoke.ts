@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { verifyFileDrops } from './file-drop-smoke.ts';
+import { verifyVisualDesign } from './visual-smoke.ts';
 
 const directory = await mkdtemp(join(tmpdir(), 'y-term-smoke-'));
 const executablePath = process.env.Y_TERM_EXECUTABLE;
@@ -107,8 +108,9 @@ try {
     try { await window.terminal.openLink('file:///etc/passwd'); return false; } catch { return true; }
   });
   assert.equal(rejected, true);
+  await verifyVisualDesign(application, page);
   assert.deepEqual(errors, []);
-  console.log('PASS: shell commands, Shift+Enter, Cmd+Backspace, file/folder drops, window resize, independent tabs, closure, and URL policy.');
+  console.log('PASS: shell commands, keyboard input, file/folder drops, resize, independent tabs, closure, URL policy, sidebar layout, themes, search, and empty state.');
 } finally {
   await application.close();
   await rm(directory, { recursive: true, force: true });

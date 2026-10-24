@@ -93,8 +93,22 @@ export class TerminalView {
     this.terminal.options.fontSize = preferences.fontSize;
     this.terminal.options.scrollback = preferences.scrollback;
     this.terminal.options.theme = preferences.theme === 'dark'
-      ? { background: '#101113', foreground: '#e5e7eb', cursor: '#a6e3a1', selectionBackground: '#39536b' }
-      : { background: '#faf9f6', foreground: '#23262b', cursor: '#24543c', selectionBackground: '#bfd6ec' };
+      ? {
+        background: '#101216', foreground: '#dcdfe5', cursor: '#7aa2ff', cursorAccent: '#101216',
+        selectionBackground: '#7aa2ff40', selectionInactiveBackground: '#7aa2ff26',
+        black: '#171a20', red: '#f28b91', green: '#3dd68c', yellow: '#e8c47f',
+        blue: '#8fb8ff', magenta: '#d3a6ff', cyan: '#80d4d0', white: '#dcdfe5',
+        brightBlack: '#7c8290', brightRed: '#ffa3a8', brightGreen: '#72e4ad', brightYellow: '#f5d99c',
+        brightBlue: '#b4ceff', brightMagenta: '#e2c3ff', brightCyan: '#a3e8e4', brightWhite: '#eef0f3',
+      }
+      : {
+        background: '#faf9f6', foreground: '#23262b', cursor: '#4269c2', cursorAccent: '#faf9f6',
+        selectionBackground: '#4269c230', selectionInactiveBackground: '#4269c21c',
+        black: '#23262b', red: '#b53847', green: '#237a51', yellow: '#896017',
+        blue: '#3564b4', magenta: '#8b4bb0', cyan: '#247775', white: '#59616b',
+        brightBlack: '#6e7480', brightRed: '#c44050', brightGreen: '#278658', brightYellow: '#95691c',
+        brightBlue: '#4269c2', brightMagenta: '#9658bb', brightCyan: '#2d8583', brightWhite: '#23262b',
+      };
   }
   async close(): Promise<void> {
     if (this.disposed) return;

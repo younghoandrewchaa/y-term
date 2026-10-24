@@ -9,10 +9,26 @@
   <script src="./app.js" defer></script>
 </head>
 <body>
-  <header>
-    <div id="tabs" role="tablist" aria-label="Terminal tabs"></div>
-    <button id="new-tab" aria-label="New tab" title="New tab (⌘T)">+</button>
-    <button id="settings-open" aria-label="Settings" title="Settings (⌘,)">⚙</button>
+  <aside class="sidebar" aria-label="Sessions">
+    <div class="window-drag-region" aria-hidden="true"></div>
+    <div class="sidebar-heading"><h1>Sessions</h1><span id="session-count">0</span></div>
+    <div id="tabs" role="tablist" aria-label="Terminal tabs" aria-orientation="vertical"></div>
+    <button id="new-tab" class="sidebar-action" aria-label="New tab" title="New session (⌘T)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span>New session</span><kbd>⌘T</kbd>
+    </button>
+    <div class="sidebar-bottom">
+      <button id="settings-open" class="sidebar-action" aria-label="Settings" title="Settings (⌘,)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m9 3-1 3-3 1-2 3 2 2-1 3 3 2 2 3h4l2-3 3-1 2-3-2-2 1-3-3-2-2-3Z"/></svg>
+        <span>Settings</span><kbd>⌘,</kbd>
+      </button>
+    </div>
+  </aside>
+  <div class="workspace">
+  <header class="session-header">
+    <span id="active-title">Y-Term</span>
+    <span id="active-directory" title="Starting directory"></span>
+    <span class="session-connection"><span class="connection-dot" aria-hidden="true"></span><span id="active-shell">Local</span></span>
   </header>
   <aside id="find-bar" hidden>
     <input id="find-input" type="search" placeholder="Find in terminal" aria-label="Find in terminal">
@@ -21,8 +37,17 @@
     <span id="find-status" role="status"></span>
     <button id="find-close" aria-label="Close search">×</button>
   </aside>
-  <main id="panels"></main>
-  <footer><span id="message" role="status">Local shells · ⌘T new tab · ⌘F find · ⌘-click opens links</span></footer>
+  <main id="panels">
+    <section id="empty-state" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 7 5 5-5 5M13 17h6"/></svg>
+      <h2>A fresh start.</h2>
+      <p>Open a session and make yourself at home.</p>
+      <button id="empty-new-tab">New session <kbd>⌘T</kbd></button>
+    </section>
+  </main>
+  <footer><span id="message" role="status">⌘T new session · ⌘F find · ⌘-click opens links</span><span class="footer-brand">Y-Term</span></footer>
+  </div>
+  <template id="session-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 7 5 5-5 5M13 17h6"/></svg></template>
   <dialog id="settings">
     <form id="settings-form">
       <h1>Settings</h1>

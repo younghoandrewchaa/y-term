@@ -17,6 +17,8 @@ npm start
 
 ## Use
 
+Sessions appear in the left sidebar, with Settings at the bottom. The header shows the active shell title and its configured starting directory. Use Up/Down or Home/End while a session button has focus to switch sessions.
+
 - ⌘T creates a tab; ⌘W closes the current tab and immediately terminates its shell and child programs. Control-Tab and Control-Shift-Tab switch tabs.
 - ⌘C and ⌘V copy and paste using the macOS Edit menu. Control-C remains the shell interrupt key. Multiline paste asks for confirmation.
 - Shift+Enter inserts a newline in terminal agents that support modified Enter (CSI u). Enter submits as usual.
@@ -43,6 +45,8 @@ npm run make
 ```
 
 The smoke test launches real Electron and real PTYs using a temporary settings directory. It executes shell commands, resizes the window, switches and closes independent tabs, and checks URL restrictions. `test:packaged` runs the same checks against `out/Y-Term-darwin-arm64/Y-Term.app/Contents/MacOS/Y-Term`. Packaging unpacks node-pty so its native binding and spawn helper remain accessible. `npm run make` creates a ZIP and a DMG in `out/make`.
+
+The smoke suite also checks sidebar scrolling, both themes, search, long titles, minimum window size, and the empty state. Set `Y_TERM_SCREENSHOTS=/private/tmp/y-term-screenshots` when running `npm run test:e2e` to capture the visual checks.
 
 Automated checks supplement these manual packaged-app checks:
 

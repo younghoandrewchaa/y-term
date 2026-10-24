@@ -26,7 +26,7 @@ function createWindow(): void {
   const window = new BrowserWindow({
     ...visibleBounds(preferences.get().bounds, screen.getAllDisplays().map(d => d.workArea)),
     minWidth: 640, minHeight: 400, title: 'Y-Term',
-    backgroundColor: preferences.get().theme === 'dark' ? '#101113' : '#faf9f6',
+    backgroundColor: preferences.get().theme === 'dark' ? '#101216' : '#faf9f6',
     titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 17 },
     show: false,
     webPreferences: {

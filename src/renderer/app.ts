@@ -20,13 +20,20 @@ const settings = element<HTMLDialogElement>('settings');
 const settingsForm = element<HTMLFormElement>('settings-form');
 const findBar = element('find-bar');
 const findInput = element<HTMLInputElement>('find-input');
-interface Tab { button: HTMLButtonElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView }
+interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string }
 const tabs: Tab[] = [];
 let active: Tab | undefined;
 let preferences: Preferences;
 let counter = 0;
 
 function report(value: unknown): void { message.textContent = String(value); }
+function updateHeader(): void {
+  element('active-title').textContent = active?.label.textContent || 'Y-Term';
+  element('active-directory').textContent = active?.cwd || '';
+  element('active-shell').textContent = active ? `${active.shell} · Local` : 'Local';
+  element('session-count').textContent = String(tabs.length);
+  element('empty-state').hidden = tabs.length > 0;
+}
 function select(tab: Tab): void {
   active = tab;
   for (const item of tabs) {
@@ -35,6 +42,8 @@ function select(tab: Tab): void {
     item.button.tabIndex = selected ? 0 : -1;
     item.panel.hidden = !selected;
   }
+  updateHeader();
+  tab.button.scrollIntoView({ block: 'nearest' });
   tab.view.focus();
 }
 async function confirmPaste(text: string): Promise<boolean> {
@@ -50,7 +59,8 @@ async function newTab(): Promise<void> {
   const n = ++counter;
   const wrapper = document.createElement('div'); wrapper.className = 'tab'; wrapper.setAttribute('role', 'presentation');
   const button = document.createElement('button'); button.setAttribute('role', 'tab'); button.id = `tab-${n}`;
-  button.textContent = `Shell ${n}`;
+  const label = document.createElement('span'); label.className = 'tab-label'; label.textContent = `Shell ${n}`;
+  button.append(element<HTMLTemplateElement>('session-icon').content.cloneNode(true), label);
   const close = document.createElement('button'); close.className = 'tab-close'; close.textContent = '×'; close.setAttribute('aria-label', 'Close tab');
   const panel = document.createElement('section'); panel.className = 'terminal-panel'; panel.id = `panel-${n}`;
   panel.setAttribute('role', 'tabpanel'); panel.setAttribute('aria-labelledby', button.id); button.setAttribute('aria-controls', panel.id);
@@ -59,15 +69,21 @@ async function newTab(): Promise<void> {
   const statusText = document.createElement('span'); status.append(statusText, restart);
   const host = document.createElement('div'); host.className = 'terminal-host'; panel.append(status, host);
   wrapper.append(button, close); tablist.append(wrapper); panels.append(panel);
-  const view = new TerminalView(host, preferences, title => { button.textContent = title || `Shell ${n}`; }, value => {
+  const view = new TerminalView(host, preferences, title => {
+    label.textContent = title || `Shell ${n}`;
+    button.title = label.textContent;
+    if (active?.button === button) updateHeader();
+  }, value => {
     statusText.textContent = value; status.hidden = false;
   }, confirmPaste);
-  const tab = { button, wrapper, panel, view }; tabs.push(tab);
+  const tab = { button, label, wrapper, panel, view, cwd: preferences.cwd, shell: preferences.shell.split('/').pop() || preferences.shell }; tabs.push(tab);
   button.onclick = () => select(tab);
   close.onclick = () => closeTab(tab);
   button.onkeydown = event => {
-    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-      event.preventDefault(); cycle(event.key === 'ArrowRight' ? 1 : -1); active?.button.focus();
+    if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(event.key)) {
+      event.preventDefault(); cycle(event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1); active?.button.focus();
+    } else if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault(); select(tabs[event.key === 'Home' ? 0 : tabs.length - 1]); active?.button.focus();
     }
   };
   select(tab);
@@ -83,8 +99,13 @@ function closeTab(tab = active): void {
     active = undefined;
     const next = tabs[Math.min(index, tabs.length - 1)];
     if (next) select(next);
-    else report('No open shells. Press ⌘T or + to start a new tab.');
+    else {
+      report('No open shells. Press ⌘T to start a new session.');
+      element('empty-state').hidden = false;
+      element('empty-new-tab').focus();
+    }
   }
+  updateHeader();
 }
 function cycle(direction: number): void {
   if (active && tabs.length) select(tabs[(tabs.indexOf(active) + direction + tabs.length) % tabs.length]);
@@ -122,6 +143,7 @@ function action(command: MenuAction): void {
   }
 }
 element('new-tab').onclick = () => { void newTab().catch(report); };
+element('empty-new-tab').onclick = () => { void newTab().catch(report); };
 element('settings-open').onclick = openSettings;
 element('settings-cancel').onclick = () => settings.close();
 settings.addEventListener('close', () => active?.view.focus());
