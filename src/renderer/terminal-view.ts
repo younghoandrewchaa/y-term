@@ -41,6 +41,14 @@ export class TerminalView {
     });
     this.terminal.onData(data => { if (this.session.id) window.terminal.write(this.session.id, data); });
     this.terminal.attachCustomKeyEventHandler(event => {
+      if (event.key === 'Backspace' && event.metaKey && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.isComposing) {
+        if (event.type === 'keydown') {
+          event.preventDefault();
+          // Ctrl+U deletes back to the beginning of the shell input line.
+          this.terminal.input('\x15');
+        }
+        return false;
+      }
       if (event.key !== 'Enter' || !event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return true;
       if (event.type === 'keydown') {
         event.preventDefault();

@@ -40,6 +40,11 @@ try {
     await page.evaluate(() => window.terminal.getPreferences());
     const writes = await application.evaluate(() => (globalThis as unknown as { keyboardSmoke: { writes: string[] } }).keyboardSmoke.writes);
     assert.deepEqual(writes, ['\x1b[13;2u', '\r'], 'Shift+Enter must send modified Enter once; Enter must still submit');
+    await application.evaluate(() => { (globalThis as unknown as { keyboardSmoke: { writes: string[] } }).keyboardSmoke.writes = []; });
+    await page.keyboard.press('Meta+Backspace');
+    await page.evaluate(() => window.terminal.getPreferences());
+    const deleteWrites = await application.evaluate(() => (globalThis as unknown as { keyboardSmoke: { writes: string[] } }).keyboardSmoke.writes);
+    assert.deepEqual(deleteWrites, ['\x15'], 'Cmd+Backspace must send backward line deletion exactly once');
   } finally {
     await application.evaluate(({ ipcMain }) => {
       const state = (globalThis as unknown as { keyboardSmoke: { listener: (...args: unknown[]) => void } }).keyboardSmoke;
@@ -47,6 +52,12 @@ try {
     });
   }
   await page.keyboard.press('Control+u');
+  await page.keyboard.type("discard printf 'YTERM_%s\\n' 'DELETE_OK'");
+  await page.keyboard.press('Control+a');
+  for (let index = 0; index < 'discard '.length; index++) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Meta+Backspace');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => (window as unknown as { smokeOutput: string }).smokeOutput.includes('YTERM_DELETE_OK'));
   await page.keyboard.type("printf 'YTERM_BEFORE:'; stty size");
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => /YTERM_BEFORE:\d+\s+\d+/.test((window as unknown as { smokeOutput: string }).smokeOutput));
@@ -97,7 +108,7 @@ try {
   });
   assert.equal(rejected, true);
   assert.deepEqual(errors, []);
-  console.log('PASS: shell commands, Shift+Enter, file/folder drops, window resize, independent tabs, closure, and URL policy.');
+  console.log('PASS: shell commands, Shift+Enter, Cmd+Backspace, file/folder drops, window resize, independent tabs, closure, and URL policy.');
 } finally {
   await application.close();
   await rm(directory, { recursive: true, force: true });
