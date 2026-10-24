@@ -26,6 +26,7 @@ export interface Preferences {
 }
 export type MenuAction = 'new-tab' | 'close-tab' | 'find' | 'settings' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'clear' | 'next-tab' | 'previous-tab';
 export interface TerminalAPI {
+  getPathForFile(file: File): string;
   create(size: Dimensions): Promise<string>;
   ready(id: string): void;
   write(id: string, data: string, binary?: boolean): void;

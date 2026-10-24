@@ -1,8 +1,9 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { IpcRendererEvent } from 'electron';
 import type { MenuAction, TerminalAPI, TerminalEvent } from '../shared/terminal-protocol.ts';
 
 const api: TerminalAPI = {
+  getPathForFile: file => webUtils.getPathForFile(file),
   create: size => ipcRenderer.invoke('terminal:create', size),
   ready: id => ipcRenderer.send('terminal:ready', id),
   write: (id, data, binary = false) => ipcRenderer.send('terminal:write', id, data, binary),
