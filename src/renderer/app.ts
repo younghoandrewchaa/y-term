@@ -3,6 +3,15 @@ import './styles.css';
 import { TerminalView } from './terminal-view.ts';
 import type { MenuAction, Preferences } from '../shared/terminal-protocol.ts';
 
+// A file dropped outside a terminal must not navigate away from the app.
+for (const type of ['dragover', 'drop'] as const) {
+  document.addEventListener(type, event => {
+    if (!event.dataTransfer?.types.includes('Files')) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'none';
+  });
+}
+
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const tablist = element('tabs');
 const panels = element('panels');
