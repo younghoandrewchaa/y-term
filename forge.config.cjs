@@ -1,3 +1,14 @@
+const release = process.env.Y_TERM_RELEASE === '1';
+const applePassword = process.env.APPLE_APP_SPECIFIC_PASSWORD || process.env.APPLE_ID_PASSWORD;
+const notarization = process.env.APPLE_ID ? {
+  appleId: process.env.APPLE_ID,
+  appleIdPassword: applePassword,
+  teamId: process.env.APPLE_TEAM_ID,
+} : { keychainProfile: process.env.APPLE_KEYCHAIN_PROFILE || 'm-note' };
+if (release && process.env.APPLE_ID && (!applePassword || !process.env.APPLE_TEAM_ID)) {
+  throw new Error('APPLE_ID requires APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID.');
+}
+
 module.exports = {
   packagerConfig: {
     name: 'Y-Term',
@@ -9,14 +20,10 @@ module.exports = {
     // node-pty needs both its native binding and its executable spawn-helper.
     asar: { unpack: '**/node-pty/**' },
     ignore: [/^\/src($|\/)/, /^\/tests($|\/)/, /^\/scripts($|\/)/, /^\/docs($|\/)/, /^\/test-results($|\/)/],
-    ...(process.env.APPLE_SIGN_IDENTITY ? {
-      osxSign: { identity: process.env.APPLE_SIGN_IDENTITY },
-      ...(process.env.APPLE_ID && process.env.APPLE_APP_SPECIFIC_PASSWORD && process.env.APPLE_TEAM_ID ? {
-        osxNotarize: {
-          appleId: process.env.APPLE_ID,
-          appleIdPassword: process.env.APPLE_APP_SPECIFIC_PASSWORD,
-          teamId: process.env.APPLE_TEAM_ID,
-        },
+    ...(release || process.env.APPLE_SIGN_IDENTITY ? {
+      osxSign: process.env.APPLE_SIGN_IDENTITY ? { identity: process.env.APPLE_SIGN_IDENTITY } : {},
+      ...(release || (process.env.APPLE_ID && applePassword && process.env.APPLE_TEAM_ID) ? {
+        osxNotarize: notarization,
       } : {}),
     } : {}),
   },

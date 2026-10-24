@@ -51,7 +51,7 @@ npm run typecheck
 ZIP_PATH="out/make/zip/darwin/arm64/${PRODUCT_NAME}-darwin-arm64-${VERSION}.zip"
 DMG_PATH="out/make/${PRODUCT_NAME}-darwin-arm64-${VERSION}.dmg"
 rm -f "$ZIP_PATH" "$DMG_PATH"
-npm run make
+Y_TERM_RELEASE=1 npm run make
 if [ ! -s "$ZIP_PATH" ]; then
   echo "Build did not produce $ZIP_PATH" >&2
   exit 1
@@ -60,6 +60,7 @@ if [ ! -s "$DMG_PATH" ]; then
   echo "Build did not produce $DMG_PATH" >&2
   exit 1
 fi
+bash scripts/notarize-dmg.sh
 
 if [ -z "${TAG_COMMIT:-}" ]; then
   git tag -a "$TAG" -m "$RELEASE_NOTE"
