@@ -72,6 +72,7 @@ function setMenu(): void {
 }
 
 void app.whenReady().then(() => {
+  app.dock?.setIcon(join(__dirname, '../../assets/icon.png'));
   preferences = new PreferencesStore(app.getPath('userData'));
   manager = new SessionManager(size => {
     const launch = buildShellLaunch(preferences.get(), size, process.env);

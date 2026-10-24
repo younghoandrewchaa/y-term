@@ -1,6 +1,7 @@
 module.exports = {
   packagerConfig: {
     name: 'Y-Term',
+    icon: 'assets/icon.icns',
     ...(process.env.ELECTRON_ZIP_DIR ? { electronZipDir: process.env.ELECTRON_ZIP_DIR } : {}),
     executableName: 'Y-Term',
     appBundleId: 'dev.youngho.y-term',

@@ -12,6 +12,7 @@
     "node": ">=24.13.0"
   },
   "scripts": {
+    "build:icon": "node scripts/build-icon.mjs",
     "build": "node scripts/build.mjs",
     "start": "npm run build && electron-forge start",
     "package": "npm run build && electron-forge package --platform=darwin --arch=arm64",
