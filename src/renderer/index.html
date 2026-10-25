@@ -9,7 +9,8 @@
   <script src="./app.js" defer></script>
 </head>
 <body>
-  <aside class="sidebar" aria-label="Sessions">
+  <aside id="sidebar" class="sidebar" aria-label="Sessions">
+    <div id="sidebar-resize" role="separator" tabindex="0" aria-label="Resize sidebar" aria-orientation="vertical" aria-controls="sidebar" title="Drag to resize · Double-click to reset"></div>
     <div class="window-drag-region" aria-hidden="true"></div>
     <div class="sidebar-heading"><h1>Sessions</h1><span id="session-count">0</span></div>
     <div id="tabs" role="tablist" aria-label="Terminal tabs" aria-orientation="vertical"></div>

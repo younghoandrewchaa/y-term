@@ -19,6 +19,8 @@ npm start
 
 Sessions appear in the left sidebar, with Settings at the bottom. The header shows the active shell title and its configured starting directory. Use Up/Down or Home/End while a session button has focus to switch sessions.
 
+Drag the sidebar’s right edge to resize it; the app remembers your width across restarts. Double-click the edge to reset it. You can also focus the divider with Tab and use Left/Right to resize, or Home/End for the minimum/maximum width.
+
 - ⌘T creates a tab; ⌘W closes the current tab and immediately terminates its shell and child programs. Control-Tab and Control-Shift-Tab switch tabs.
 - ⌘C and ⌘V copy and paste using the macOS Edit menu. Control-C remains the shell interrupt key. Multiline paste asks for confirmation.
 - Shift+Enter inserts a newline in terminal agents that support modified Enter (CSI u). Enter submits as usual.

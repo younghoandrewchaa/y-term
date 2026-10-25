@@ -22,6 +22,7 @@ export interface Preferences {
   scrollback: number;
   shell: string;
   cwd: string;
+  sidebarWidth?: number;
   bounds?: WindowBounds;
 }
 export type MenuAction = 'new-tab' | 'close-tab' | 'find' | 'settings' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'clear' | 'next-tab' | 'previous-tab';

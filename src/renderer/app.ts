@@ -1,6 +1,7 @@
 import '@xterm/xterm/css/xterm.css';
 import './styles.css';
 import { TerminalView } from './terminal-view.ts';
+import { attachSidebarResize } from './sidebar-resize.ts';
 import type { MenuAction, Preferences } from '../shared/terminal-protocol.ts';
 
 // A file dropped outside a terminal must not navigate away from the app.
@@ -157,4 +158,12 @@ element('find-previous').onclick = () => find(true);
 element('find-close').onclick = () => { findBar.hidden = true; active?.view.focus(); };
 window.terminal.onAction(action);
 window.addEventListener('beforeunload', () => { for (const tab of tabs) void tab.view.close(); });
-void window.terminal.getPreferences().then(value => { preferences = value; applyPreferences(); return newTab(); }).catch(report);
+void window.terminal.getPreferences().then(value => {
+  preferences = value;
+  attachSidebarResize(element('sidebar'), element('sidebar-resize'), preferences.sidebarWidth, width => {
+    preferences.sidebarWidth = width;
+    void window.terminal.savePreferences({ ...preferences }).catch(report);
+  });
+  applyPreferences();
+  return newTab();
+}).catch(report);

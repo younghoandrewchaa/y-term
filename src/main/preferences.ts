@@ -21,6 +21,7 @@ export function validatePreferences(value: unknown): Preferences {
   if (typeof p.fontFamily !== 'string' || !p.fontFamily.trim() || p.fontFamily.length > 200 || /[\x00-\x1f]/.test(p.fontFamily)) throw new Error('Invalid font family.');
   if (p.theme !== 'dark' && p.theme !== 'light') throw new Error('Invalid theme.');
   if (!integer(p.scrollback, 100, 100000)) throw new Error('Scrollback must be between 100 and 100000.');
+  if (p.sidebarWidth !== undefined && !integer(p.sidebarWidth, 180, 480)) throw new Error('Sidebar width must be between 180 and 480.');
   for (const key of ['shell', 'cwd'] as const) {
     if (typeof p[key] !== 'string' || !isAbsolute(p[key]) || p[key].length > 4096 || /[\x00-\x1f]/.test(p[key])) throw new Error(`${key} must be an absolute path.`);
   }
@@ -30,7 +31,7 @@ export function validatePreferences(value: unknown): Preferences {
     if (!b || !integer(b.x, -100000, 100000) || !integer(b.y, -100000, 100000) || !integer(b.width, 400, 10000) || !integer(b.height, 300, 10000)) throw new Error('Invalid window bounds.');
     bounds = { x: b.x, y: b.y, width: b.width, height: b.height };
   }
-  return { fontFamily: p.fontFamily, fontSize: p.fontSize, theme: p.theme, scrollback: p.scrollback, shell: p.shell, cwd: p.cwd, ...(bounds ? { bounds } : {}) };
+  return { fontFamily: p.fontFamily, fontSize: p.fontSize, theme: p.theme, scrollback: p.scrollback, shell: p.shell, cwd: p.cwd, ...(p.sidebarWidth !== undefined ? { sidebarWidth: p.sidebarWidth } : {}), ...(bounds ? { bounds } : {}) };
 }
 
 export class PreferencesStore {

@@ -33,3 +33,16 @@ test('moves windows from a disconnected display onto an available display', () =
     { x: 0, y: 0, width: 1440, height: 900 },
   ]), { x: 0, y: 0, width: 1440, height: 900 });
 });
+
+test('persists sidebar width and accepts settings from before resizing was supported', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'y-term-sidebar-'));
+  try {
+    const store = new PreferencesStore(directory);
+    assert.equal(store.get().sidebarWidth, undefined);
+    store.save({ ...store.get(), sidebarWidth: 320 });
+    assert.equal(new PreferencesStore(directory).get().sidebarWidth, 320);
+    for (const sidebarWidth of [179, 481, 232.5, '320', null, Infinity]) {
+      assert.throws(() => store.save({ ...store.get(), sidebarWidth }), /sidebar/i);
+    }
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
