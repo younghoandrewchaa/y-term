@@ -5,6 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import type { Preferences } from '../shared/terminal-protocol.ts';
 import { TerminalSession } from './terminal-session.ts';
 import { attachTerminalFileDrop } from './file-drop.ts';
+import { attachTerminalImagePaste } from './image-paste.ts';
 
 export class TerminalView {
   readonly terminal: Terminal;
@@ -15,6 +16,7 @@ export class TerminalView {
   private disposed = false;
   private exited = false;
   private removeFileDrop: () => void;
+  private removeImagePaste: () => void;
   private host: HTMLElement;
 
   constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, directory: (cwd: string) => void) {
@@ -32,9 +34,14 @@ export class TerminalView {
       exited: message => { this.exited = true; this.terminal.options.disableStdin = true; status(message); },
       directory,
     });
+    const canPaste = () => !!this.session.id && !this.exited && !this.disposed && host.isConnected
+      && !host.closest('[hidden]') && !document.querySelector('dialog[open]');
+    this.removeImagePaste = attachTerminalImagePaste(host, {
+      canPaste,
+      input: data => this.terminal.input(data),
+    });
     this.removeFileDrop = attachTerminalFileDrop(host, {
-      canPaste: () => !!this.session.id && !this.exited && !this.disposed && host.isConnected
-        && !host.closest('[hidden]') && !document.querySelector('dialog[open]'),
+      canPaste,
       getPathForFile: file => window.terminal.getPathForFile(file),
       paste: text => this.terminal.paste(text),
       focus: () => this.terminal.focus(),
@@ -108,6 +115,7 @@ export class TerminalView {
     if (this.disposed) return;
     this.disposed = true;
     this.removeFileDrop();
+    this.removeImagePaste();
     this.observer.disconnect();
     this.terminal.dispose();
     await this.session.close();

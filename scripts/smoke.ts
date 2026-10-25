@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { verifyFileDrops } from './file-drop-smoke.ts';
+import { verifyImagePaste } from './image-paste-smoke.ts';
 import { verifyVisualDesign } from './visual-smoke.ts';
 import { verifySidebarResize } from './sidebar-smoke.ts';
 import { verifySessionDirectories } from './directory-smoke.ts';
@@ -119,10 +120,11 @@ try {
   });
   assert.equal(rejected, true);
   await verifySessionDirectories(page);
+  await verifyImagePaste(application, page);
   await verifyVisualDesign(application, page);
   await verifySidebarResize(application, page);
   assert.deepEqual(errors, []);
-  console.log('PASS: shell commands, keyboard input, file/folder drops, resize, independent tabs, closure, URL policy, sidebar layout, themes, search, and empty state.');
+  console.log('PASS: shell commands, keyboard input, native image/text paste, file/folder drops, resize, independent tabs, closure, URL policy, sidebar layout, themes, search, and empty state.');
 } finally {
   await application.close();
   await rm(directory, { recursive: true, force: true });
