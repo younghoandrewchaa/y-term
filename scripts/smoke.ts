@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { verifyFileDrops } from './file-drop-smoke.ts';
 import { verifyVisualDesign } from './visual-smoke.ts';
 import { verifySidebarResize } from './sidebar-smoke.ts';
+import { verifySessionDirectories } from './directory-smoke.ts';
 
 const directory = await mkdtemp(join(tmpdir(), 'y-term-smoke-'));
 const executablePath = process.env.Y_TERM_EXECUTABLE;
@@ -117,6 +118,7 @@ try {
     try { await window.terminal.openLink('file:///etc/passwd'); return false; } catch { return true; }
   });
   assert.equal(rejected, true);
+  await verifySessionDirectories(page);
   await verifyVisualDesign(application, page);
   await verifySidebarResize(application, page);
   assert.deepEqual(errors, []);

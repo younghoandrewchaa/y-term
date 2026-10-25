@@ -17,7 +17,7 @@ export class TerminalView {
   private removeFileDrop: () => void;
   private host: HTMLElement;
 
-  constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void) {
+  constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, directory: (cwd: string) => void) {
     this.host = host;
     this.terminal = new Terminal({ cursorBlink: true, allowProposedApi: false });
     this.apply(preferences);
@@ -30,6 +30,7 @@ export class TerminalView {
     this.session = new TerminalSession(window.terminal, {
       write: (data, processed) => this.terminal.write(data, processed),
       exited: message => { this.exited = true; this.terminal.options.disableStdin = true; status(message); },
+      directory,
     });
     this.removeFileDrop = attachTerminalFileDrop(host, {
       canPaste: () => !!this.session.id && !this.exited && !this.disposed && host.isConnected

@@ -3,6 +3,7 @@ import type { Dimensions, TerminalAPI } from '../shared/terminal-protocol.ts';
 interface Output {
   write(data: string, processed: () => void): void;
   exited(message: string): void;
+  directory(cwd: string): void;
 }
 
 /** Owns the subscription before starting the PTY; ready releases buffered output. */
@@ -20,7 +21,8 @@ export class TerminalSession {
         output.write(event.data, () => {
           if (!this.closed) api.acknowledge(event.id, event.sequence);
         });
-      } else output.exited(event.error ?? `Shell exited with status ${event.exitCode}${event.signal ? ` (signal ${event.signal})` : ''}. Open a new tab to start a fresh shell.`);
+      } else if (event.type === 'directory') output.directory(event.cwd);
+      else output.exited(event.error ?? `Shell exited with status ${event.exitCode}${event.signal ? ` (signal ${event.signal})` : ''}. Open a new tab to start a fresh shell.`);
     });
   }
   async start(size: Dimensions, sourceId?: string): Promise<void> {

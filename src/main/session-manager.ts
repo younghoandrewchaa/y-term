@@ -9,6 +9,7 @@ const MAX_SESSIONS = 32;
 
 interface Session {
   owner: number;
+  cwd?: string;
   pty: PtyProcess;
   ready: boolean;
   ended: boolean;
@@ -122,6 +123,16 @@ export class SessionManager {
   get tabCount(): number {
     // Exited shells still occupy tabs until the user closes them.
     return this.sessions.size;
+  }
+
+  async refreshDirectories(read: (pid: number) => Promise<string | undefined>): Promise<void> {
+    await Promise.all([...this.sessions].map(async ([id, session]) => {
+      if (session.ended) return;
+      const cwd = await read(session.pty.pid);
+      if (!cwd || session.ended || this.sessions.get(id) !== session || cwd === session.cwd) return;
+      session.cwd = cwd;
+      this.deliver(session, { type: 'directory', id, cwd });
+    }));
   }
 
   private owned(owner: number, id: string): Session {

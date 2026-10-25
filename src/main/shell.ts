@@ -1,7 +1,28 @@
 import { accessSync, constants, statSync } from 'node:fs';
 import { basename, isAbsolute } from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
+import { promisify } from 'node:util';
 import type { Dimensions, Preferences, PtyProcess } from '../shared/terminal-protocol.ts';
+
+const execFileAsync = promisify(execFile);
+
+/** Poll without blocking terminal input while lsof inspects the shell. */
+export async function shellCurrentDirectoryAsync(pid: number): Promise<string | undefined> {
+  if (!Number.isSafeInteger(pid) || pid <= 1) return undefined;
+  try {
+    const { stdout } = await execFileAsync('/usr/sbin/lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-F0n'], {
+      encoding: 'utf8', timeout: 1000, maxBuffer: 64 * 1024,
+    });
+    return directoryFromLsof(stdout);
+  } catch { return undefined; }
+}
+
+function directoryFromLsof(output: string): string | undefined {
+  const cwd = output.split('\0').find(field => field.startsWith('n'))?.slice(1);
+  if (!cwd || !isAbsolute(cwd) || cwd.length > 4096 || /[\x00-\x1f]/.test(cwd) || !statSync(cwd).isDirectory()) return undefined;
+  accessSync(cwd, constants.R_OK | constants.X_OK);
+  return cwd;
+}
 
 /** Query the shell itself so this also works without shell integration hooks. */
 export function shellCurrentDirectory(pid: number): string | undefined {
@@ -10,10 +31,7 @@ export function shellCurrentDirectory(pid: number): string | undefined {
     const output = execFileSync('/usr/sbin/lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-F0n'], {
       encoding: 'utf8', timeout: 1000, maxBuffer: 64 * 1024, stdio: ['ignore', 'pipe', 'ignore'],
     });
-    const cwd = output.split('\0').find(field => field.startsWith('n'))?.slice(1);
-    if (!cwd || !isAbsolute(cwd) || cwd.length > 4096 || /[\x00-\x1f]/.test(cwd) || !statSync(cwd).isDirectory()) return undefined;
-    accessSync(cwd, constants.R_OK | constants.X_OK);
-    return cwd;
+    return directoryFromLsof(output);
   } catch { return undefined; }
 }
 

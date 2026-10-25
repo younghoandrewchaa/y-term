@@ -18,9 +18,19 @@ function fixture(create: () => Promise<string> = async () => 'session-1') {
   const session = new TerminalSession(api, {
     write: (data, callback) => { writes.push(data); processed.push(callback); },
     exited: message => calls.push(['exit', message]),
+    directory: cwd => calls.push(['directory', cwd]),
   });
   return { session, calls, writes, processed, receive: (event: TerminalEvent) => receive(event) };
 }
+
+test('routes directory updates independently of terminal output and exit status', async () => {
+  const f = fixture();
+  await f.session.start({ cols: 80, rows: 24 });
+  f.receive({ type: 'directory', id: 'other', cwd: '/wrong' });
+  f.receive({ type: 'directory', id: 'session-1', cwd: '/work/project' });
+  assert.deepEqual(f.calls, [['ready', 'session-1'], ['directory', '/work/project']]);
+  assert.deepEqual(f.writes, []);
+});
 
 test('acknowledges only after the terminal processes its own output', async () => {
   const f = fixture();

@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { spawn } from 'node-pty';
 import { PreferencesStore, visibleBounds } from './preferences.ts';
 import { SessionManager } from './session-manager.ts';
-import { buildShellLaunch, shellCurrentDirectory, terminatePty } from './shell.ts';
+import { buildShellLaunch, shellCurrentDirectory, shellCurrentDirectoryAsync, terminatePty } from './shell.ts';
 import { registerTerminalIpc } from './terminal-ipc.ts';
 import type { MenuAction } from '../shared/terminal-protocol.ts';
 
@@ -89,6 +89,12 @@ void app.whenReady().then(() => {
     if (contents && !contents.isDestroyed()) contents.send('terminal:event', event);
   }, terminatePty, shellCurrentDirectory);
   registerTerminalIpc(manager, preferences, documentUrl);
+  // Schedule after completion so slow lookups never accumulate overlapping polls.
+  const refreshDirectories = async () => {
+    await manager.refreshDirectories(shellCurrentDirectoryAsync);
+    setTimeout(refreshDirectories, 1000).unref();
+  };
+  void refreshDirectories();
   setMenu(); createWindow();
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
 }).catch(error => { dialog.showErrorBox('Y-Term could not start', String(error)); app.quit(); });

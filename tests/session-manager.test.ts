@@ -29,6 +29,40 @@ function setup() {
   return { manager, ptys, events };
 }
 
+test('reports directory changes for each live tab and retains the last directory on lookup failure', async () => {
+  const { manager, ptys, events } = setup();
+  const first = manager.create(1, { cols: 80, rows: 24 });
+  const second = manager.create(2, { cols: 80, rows: 24 });
+  manager.ready(1, first); manager.ready(2, second);
+  ptys[1].pid = 456;
+  await manager.refreshDirectories(async pid => pid === 123 ? '/work/project' : '/other/folder');
+  assert.deepEqual(events, [
+    { type: 'directory', id: first, cwd: '/work/project' },
+    { type: 'directory', id: second, cwd: '/other/folder' },
+  ]);
+  await manager.refreshDirectories(async pid => pid === 123 ? '/work/project' : '/other/folder');
+  assert.equal(events.length, 2, 'unchanged directories do not emit duplicate events');
+  await manager.refreshDirectories(async () => undefined);
+  assert.equal(events.length, 2);
+  manager.close(1, first);
+  ptys[1].exit({ exitCode: 0 });
+  events.length = 0;
+  await manager.refreshDirectories(async () => '/late');
+  assert.deepEqual(events, []);
+});
+
+test('does not deliver a directory lookup that finishes after tab closure', async () => {
+  const { manager, events } = setup();
+  const id = manager.create(1, { cols: 80, rows: 24 });
+  manager.ready(1, id);
+  let resolve!: (cwd: string) => void;
+  const refreshing = manager.refreshDirectories(() => new Promise<string>(done => { resolve = done; }));
+  manager.close(1, id);
+  resolve('/late');
+  await refreshing;
+  assert.deepEqual(events, []);
+});
+
 test('buffers startup output until the renderer is ready', () => {
   const { manager, ptys, events } = setup();
   const id = manager.create(1, { cols: 80, rows: 24 });
