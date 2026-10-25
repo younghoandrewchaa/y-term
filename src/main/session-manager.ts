@@ -119,6 +119,11 @@ export class SessionManager {
     for (const [id, session] of this.sessions) if (session.owner === owner) this.close(owner, id);
   }
 
+  get tabCount(): number {
+    // Exited shells still occupy tabs until the user closes them.
+    return this.sessions.size;
+  }
+
   private owned(owner: number, id: string): Session {
     const session = this.sessions.get(id);
     if (!session || session.owner !== owner) throw new Error('Unknown terminal session.');

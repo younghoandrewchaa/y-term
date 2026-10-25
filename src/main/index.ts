@@ -94,6 +94,22 @@ void app.whenReady().then(() => {
 }).catch(error => { dialog.showErrorBox('Y-Term could not start', String(error)); app.quit(); });
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-app.on('before-quit', () => {
+app.on('before-quit', event => {
+  const tabCount = manager?.tabCount ?? 0;
+  if (tabCount > 1) {
+    const response = dialog.showMessageBoxSync({
+      type: 'warning',
+      buttons: ['Cancel', 'Quit'],
+      defaultId: 0,
+      cancelId: 0,
+      title: 'Quit Y-Term?',
+      message: `Quit Y-Term and close ${tabCount} tabs?`,
+      detail: 'All terminal sessions will end and running processes will be stopped.',
+    });
+    if (response !== 1) {
+      event.preventDefault();
+      return;
+    }
+  }
   for (const window of BrowserWindow.getAllWindows()) manager?.closeOwner(window.webContents.id);
 });
