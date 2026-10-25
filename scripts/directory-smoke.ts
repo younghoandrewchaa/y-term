@@ -7,7 +7,9 @@ import type { Page } from 'playwright';
 export async function verifySessionDirectories(page: Page): Promise<void> {
   const directory = await mkdtemp(join(tmpdir(), 'y-term-directory-'));
   const folder = join(directory, 'project folder');
+  const matchingFolder = join(directory, 'other', 'project folder');
   await mkdir(folder);
+  await mkdir(matchingFolder, { recursive: true });
   const originalCwd = await page.locator('#active-directory').textContent();
   const quote = (path: string) => `'${path.replaceAll("'", "'\\''")}'`;
   const command = async (value: string) => {
@@ -30,6 +32,25 @@ export async function verifySessionDirectories(page: Page): Promise<void> {
     await command('cd /');
     await page.waitForFunction(() => document.querySelectorAll('.tab-directory')[1]?.textContent === '/');
     assert.equal(await page.locator('.tab-directory').first().textContent(), 'project folder', 'inactive tabs retain their own directory');
+    const firstId = await page.locator('[role=tab]').first().getAttribute('id');
+    const secondId = await page.locator('[role=tab]').last().getAttribute('id');
+    await page.locator(`[id="${firstId}"]`).click();
+    await page.getByRole('button', { name: 'New tab', exact: true }).click();
+    await page.waitForFunction(() => document.querySelectorAll('[role=tabpanel][data-ready=true]').length === 3);
+    const thirdId = await page.locator('[role=tab][aria-selected=true]').getAttribute('id');
+    assert.deepEqual(await page.locator('[role=tab]').evaluateAll(tabs => tabs.map(tab => tab.id)),
+      [firstId, thirdId, secondId], 'later sessions must join the matching directory group');
+    await page.locator(`[id="${thirdId}"]`).press('ArrowDown');
+    assert.equal(await page.locator('[role=tab][aria-selected=true]').getAttribute('id'), secondId,
+      'keyboard navigation must follow the grouped order');
+    await command(`cd ${quote(matchingFolder)}`);
+    await page.waitForFunction(() => [...document.querySelectorAll('.tab-directory')].every(tab => tab.textContent === 'project folder'));
+    await page.locator(`[id="${thirdId}"]`).click();
+    await command('cd /');
+    await page.waitForFunction(() => document.querySelector('[aria-selected=true] .tab-directory')?.textContent === '/');
+    assert.deepEqual(await page.locator('[role=tab]').evaluateAll(tabs => tabs.map(tab => tab.id)),
+      [firstId, secondId, thirdId], 'directory changes must regroup sessions');
+    await page.locator('.tab:has([aria-selected=true]) .tab-close').click();
     await page.getByRole('button', { name: 'Close tab' }).last().click();
     await page.locator('[role=tabpanel]:not([hidden]) .xterm-helper-textarea').focus();
     await page.keyboard.press('Enter'); // Finish read in the original shell.

@@ -61,6 +61,21 @@ element<HTMLButtonElement>('update-button').onclick = () => {
 };
 
 function report(value: unknown): void { message.textContent = String(value); }
+function directoryName(cwd: string): string { return cwd.split('/').filter(Boolean).pop() || '/'; }
+function groupTabs(): void {
+  const groups = new Map<string, Tab[]>();
+  for (const tab of tabs) {
+    const name = directoryName(tab.cwd);
+    const group = groups.get(name);
+    if (group) group.push(tab);
+    else groups.set(name, [tab]);
+  }
+  tabs.splice(0, tabs.length, ...[...groups.values()].flat());
+  tabs.forEach((tab, index) => {
+    const current = tablist.children[index];
+    if (current !== tab.wrapper) tablist.insertBefore(tab.wrapper, current || null);
+  });
+}
 function updateHeader(): void {
   element('active-title').textContent = active?.label.textContent || 'Y-Term';
   element('active-directory').textContent = active?.cwd || '';
@@ -89,7 +104,7 @@ async function newTab(): Promise<void> {
   const label = document.createElement('span'); label.className = 'tab-label'; label.textContent = `Shell ${n}`;
   const directory = document.createElement('span'); directory.className = 'tab-directory';
   const initialCwd = active?.cwd || preferences.cwd;
-  directory.textContent = initialCwd.split('/').filter(Boolean).pop() || '/';
+  directory.textContent = directoryName(initialCwd);
   const text = document.createElement('span'); text.className = 'tab-text'; text.append(label, directory);
   button.append(element<HTMLTemplateElement>('session-icon').content.cloneNode(true), text);
   const close = document.createElement('button'); close.className = 'tab-close'; close.textContent = '×'; close.setAttribute('aria-label', 'Close tab');
@@ -108,10 +123,12 @@ async function newTab(): Promise<void> {
     statusText.textContent = value; status.hidden = false;
   }, cwd => {
     tab.cwd = cwd;
-    directory.textContent = cwd.split('/').filter(Boolean).pop() || '/';
+    directory.textContent = directoryName(cwd);
+    groupTabs();
     if (active === tab) updateHeader();
   });
   const tab = { button, label, wrapper, panel, view, cwd: initialCwd, shell: preferences.shell.split('/').pop() || preferences.shell }; tabs.push(tab);
+  groupTabs();
   button.onclick = () => select(tab);
   close.onclick = () => closeTab(tab);
   button.onkeydown = event => {
