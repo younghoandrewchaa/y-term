@@ -23,7 +23,7 @@ Drag the sidebar’s right edge to resize it; the app remembers your width acros
 
 New tabs inherit the active shell’s current working directory. The configured starting directory is used for the first tab, or if the active shell’s directory is unavailable.
 
-- ⌘T creates a tab; ⌘W closes the current tab and immediately terminates its shell and child programs. Control-Tab and Control-Shift-Tab switch tabs.
+- ⌘T creates a tab; ⌘W closes the current tab and immediately terminates its shell and child programs. Control-Tab or ⇧⌘] switches to the next tab; Control-Shift-Tab or ⇧⌘[ switches to the previous tab.
 - ⌘C and ⌘V copy and paste using the macOS Edit menu. Control-C remains the shell interrupt key. Multiline paste asks for confirmation.
 - Shift+Enter inserts a newline in terminal agents that support modified Enter (CSI u). Enter submits as usual.
 - Drag files or folders from Finder into a terminal to insert their quoted absolute paths. Multiple items become separate arguments followed by a space; press Enter yourself to run the command. Paths containing control characters (including tabs and newlines) are rejected.

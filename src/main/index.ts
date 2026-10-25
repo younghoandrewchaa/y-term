@@ -67,7 +67,14 @@ function setMenu(): void {
     ] },
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }, { type: 'separator' }, action('Find…', 'CmdOrCtrl+F', 'find')] },
     { label: 'View', submenu: [action('Increase Font Size', 'CmdOrCtrl+Plus', 'zoom-in'), action('Decrease Font Size', 'CmdOrCtrl+-', 'zoom-out'), action('Reset Font Size', 'CmdOrCtrl+0', 'zoom-reset'), { type: 'separator' }, { role: 'togglefullscreen' }] },
-    { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'zoom' }, { type: 'separator' }, action('Next Tab', 'Ctrl+Tab', 'next-tab'), action('Previous Tab', 'Ctrl+Shift+Tab', 'previous-tab'), { type: 'separator' }, { role: 'front' }] },
+    { label: 'Window', submenu: [
+      { role: 'minimize' }, { role: 'zoom' }, { type: 'separator' },
+      action('Next Tab', 'Ctrl+Tab', 'next-tab'),
+      action('Previous Tab', 'Ctrl+Shift+Tab', 'previous-tab'),
+      { ...action('Next Tab', 'Cmd+Shift+]', 'next-tab'), visible: false, acceleratorWorksWhenHidden: true },
+      { ...action('Previous Tab', 'Cmd+Shift+[', 'previous-tab'), visible: false, acceleratorWorksWhenHidden: true },
+      { type: 'separator' }, { role: 'front' },
+    ] },
   ]));
 }
 
