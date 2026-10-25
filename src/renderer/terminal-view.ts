@@ -21,13 +21,17 @@ export class TerminalView {
 
   constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, directory: (cwd: string) => void) {
     this.host = host;
-    this.terminal = new Terminal({ cursorBlink: true, allowProposedApi: false });
+    const activateLink = (event: MouseEvent, uri: string) => {
+      if (event.metaKey || event.ctrlKey) void window.terminal.openLink(uri).catch(error => status(String(error)));
+    };
+    this.terminal = new Terminal({
+      cursorBlink: true, allowProposedApi: false,
+      linkHandler: { activate: activateLink },
+    });
     this.apply(preferences);
     this.terminal.loadAddon(this.fitAddon);
     this.terminal.loadAddon(this.search);
-    this.terminal.loadAddon(new WebLinksAddon((event, uri) => {
-      if (event.metaKey || event.ctrlKey) void window.terminal.openLink(uri).catch(error => status(String(error)));
-    }));
+    this.terminal.loadAddon(new WebLinksAddon(activateLink));
     this.terminal.open(host);
     this.session = new TerminalSession(window.terminal, {
       write: (data, processed) => this.terminal.write(data, processed),
