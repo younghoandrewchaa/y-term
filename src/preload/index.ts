@@ -1,8 +1,17 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { IpcRendererEvent } from 'electron';
 import type { MenuAction, TerminalAPI, TerminalEvent } from '../shared/terminal-protocol.ts';
+import type { UpdateState } from '../shared/update-protocol.ts';
 
 const api: TerminalAPI = {
+  getUpdateState: () => ipcRenderer.invoke('updates:get'),
+  checkForUpdates: () => ipcRenderer.invoke('updates:check'),
+  installUpdate: () => ipcRenderer.invoke('updates:install'),
+  onUpdateState: listener => {
+    const receive = (_event: IpcRendererEvent, state: UpdateState) => listener(state);
+    ipcRenderer.on('updates:state', receive);
+    return () => { ipcRenderer.removeListener('updates:state', receive); };
+  },
   getPathForFile: file => webUtils.getPathForFile(file),
   create: (size, sourceId) => ipcRenderer.invoke('terminal:create', size, sourceId),
   ready: id => ipcRenderer.send('terminal:ready', id),

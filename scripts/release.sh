@@ -61,6 +61,8 @@ if [ ! -s "$DMG_PATH" ]; then
   exit 1
 fi
 bash scripts/notarize-dmg.sh
+MANIFEST_PATH="out/make/update-darwin-arm64.json"
+node scripts/update-manifest.mjs "$ZIP_PATH" "$MANIFEST_PATH" "$RELEASE_NOTE"
 
 if [ -z "${TAG_COMMIT:-}" ]; then
   git tag -a "$TAG" -m "$RELEASE_NOTE"
@@ -69,6 +71,6 @@ git push origin "refs/tags/$TAG"
 if [ "$IS_DRAFT" != true ]; then
   gh release create "$TAG" --draft --verify-tag --title "$TAG" --notes "$RELEASE_NOTE"
 fi
-gh release upload "$TAG" "$ZIP_PATH" "$DMG_PATH" --clobber
+gh release upload "$TAG" "$ZIP_PATH" "$DMG_PATH" "$MANIFEST_PATH" --clobber
 gh release edit "$TAG" --draft=false --latest --notes "$RELEASE_NOTE"
 echo "Released $TAG"

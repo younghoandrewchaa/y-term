@@ -19,6 +19,8 @@ npm start
 
 Sessions appear in the left sidebar, with Settings at the bottom. The header shows the active shell title and its configured starting directory. Use Up/Down or Home/End while a session button has focus to switch sessions.
 
+The bottom of the sidebar shows the installed app version. Signed Apple Silicon releases check GitHub for a newer stable release on startup and when a new tab opens, at most once every five minutes. If one is available, click **Update**, then confirm **Update and Restart**. The app downloads the signed update, installs it, and restarts automatically. All terminal sessions and running commands end on restart; save your work before confirming. Failed checks and downloads offer a retry. Development builds and automated tests do not check or install updates.
+
 Drag the sidebar’s right edge to resize it; the app remembers your width across restarts. Double-click the edge to reset it. You can also focus the divider with Tab and use Left/Right to resize, or Home/End for the minimum/maximum width.
 
 New tabs inherit the active shell’s current working directory. The configured starting directory is used for the first tab, or if the active shell’s directory is unavailable.
@@ -43,6 +45,7 @@ npm test
 npm run typecheck
 npm run test:pty
 npm run test:e2e
+npm run test:updates
 npm run package
 npm run test:packaged
 npm run make
@@ -80,6 +83,8 @@ Releases require an installed Developer ID Application certificate; `APPLE_SIGN_
 
 Run `npm run make:release` to build and notarize both artifacts without publishing to GitHub. Plain `npm run make` remains available for local packaging and is unsigned unless `APPLE_SIGN_IDENTITY` is provided. Gatekeeper assessment of the downloaded release and clean-machine validation remain manual checks. Intel builds are outside the current target.
 
-Split panes, saved live processes, plugins, automatic updates, and dedicated SSH management are outside this first version. Use the installed `ssh` command inside a shell.
+The release script also generates and uploads `update-darwin-arm64.json`, a static Squirrel.Mac manifest pointing to that release's signed ZIP. Releases without this manifest are skipped by the update checker. Install the first release containing the updater manually; subsequent releases made with `npm run release` support in-app updates. Before shipping, validate a real update between two signed releases installed in a writable Applications folder, including signature rejection, offline retry, terminal cleanup and relaunch. Unit and GUI tests simulate the native updater and do not replace this signed-app check.
+
+Split panes, saved live processes, plugins, and dedicated SSH management are outside this first version. Use the installed `ssh` command inside a shell.
 
 Third-party packages and their upstream notices are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

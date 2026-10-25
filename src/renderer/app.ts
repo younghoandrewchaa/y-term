@@ -3,6 +3,7 @@ import './styles.css';
 import { TerminalView } from './terminal-view.ts';
 import { attachSidebarResize } from './sidebar-resize.ts';
 import type { MenuAction, Preferences } from '../shared/terminal-protocol.ts';
+import type { UpdateState } from '../shared/update-protocol.ts';
 
 // A file dropped outside a terminal must not navigate away from the app.
 for (const type of ['dragover', 'drop'] as const) {
@@ -26,6 +27,38 @@ const tabs: Tab[] = [];
 let active: Tab | undefined;
 let preferences: Preferences;
 let counter = 0;
+
+let updateState: UpdateState | undefined;
+function renderUpdate(state: UpdateState): void {
+  updateState = state;
+  element('app-updates').dataset.status = state.status;
+  element('app-version').textContent = `v${state.version}`;
+  const status = element('update-status');
+  const button = element<HTMLButtonElement>('update-button');
+  const busy = ['confirming', 'downloading', 'installing'].includes(state.status);
+  const labels: Partial<Record<UpdateState['status'], string>> = {
+    checking: 'Checking for updates…', available: `Version ${state.latestVersion} available`,
+    confirming: 'Waiting for confirmation…', downloading: 'Downloading update…', installing: 'Installing and restarting…',
+    error: state.message || 'Update failed. Try again.',
+  };
+  status.textContent = labels[state.status] || '';
+  status.hidden = !status.textContent;
+  button.hidden = !busy && state.status !== 'available' && state.status !== 'error';
+  button.disabled = busy;
+  button.textContent = state.status === 'error' ? (state.latestVersion ? 'Retry update' : 'Retry check') :
+    busy ? (state.status === 'confirming' ? 'Update' : 'Updating…') : 'Update';
+}
+window.terminal.onUpdateState(renderUpdate);
+// Subscribe first, then ignore an initial snapshot if a newer event arrived.
+void window.terminal.getUpdateState().then(state => { if (!updateState) renderUpdate(state); }).catch(report);
+element<HTMLButtonElement>('update-button').onclick = () => {
+  if (!updateState) return;
+  element<HTMLButtonElement>('update-button').disabled = true;
+  const request = updateState.latestVersion ? window.terminal.installUpdate() : window.terminal.checkForUpdates();
+  void request.catch(() => {
+    if (updateState) renderUpdate({ ...updateState, status: 'error', message: 'Update request failed. Try again.' });
+  });
+};
 
 function report(value: unknown): void { message.textContent = String(value); }
 function updateHeader(): void {

@@ -53,6 +53,8 @@ function release(mode = '') {
   if (existsSync(source)) writeFileSync(script, readFileSync(source));
   const notarize = resolve('scripts/notarize-dmg.sh');
   if (existsSync(notarize)) writeFileSync(join(root, 'scripts/notarize-dmg.sh'), readFileSync(notarize));
+  const manifestScript = resolve('scripts/update-manifest.mjs');
+  if (existsSync(manifestScript)) writeFileSync(join(root, 'scripts/update-manifest.mjs'), readFileSync(manifestScript));
   let result;
   try {
     result = spawnSync('bash', [script, 'Release notes'], {
@@ -60,7 +62,9 @@ function release(mode = '') {
         APPLE_ID: '', APPLE_SIGN_IDENTITY: '', APPLE_KEYCHAIN_PROFILE: 'test-profile' },
       encoding: 'utf8',
     });
-    return { status: result.status, output: result.stdout + result.stderr, commands: existsSync(log) ? readFileSync(log, 'utf8') : '' };
+    const manifest = join(root, 'out/make/update-darwin-arm64.json');
+    return { status: result.status, output: result.stdout + result.stderr, commands: existsSync(log) ? readFileSync(log, 'utf8') : '',
+      manifest: existsSync(manifest) ? JSON.parse(readFileSync(manifest, 'utf8')) : undefined };
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -78,7 +82,13 @@ test('release builds and uploads ZIP and DMG before publishing its draft', () =>
   assert.ok(result.commands.indexOf('xcrun stapler staple') < result.commands.indexOf('gh release upload'));
   assert.match(result.commands, /git push origin refs\/tags\/v0.1.0/);
   assert.match(result.commands, /gh release create v0.1.0 --draft --verify-tag/);
-  assert.match(result.commands, /gh release upload v0.1.0 .*Y-Term-darwin-arm64-0.1.0.zip .*Y-Term-darwin-arm64-0.1.0.dmg --clobber/);
+  assert.match(result.commands, /gh release upload v0.1.0 .*Y-Term-darwin-arm64-0.1.0.zip .*Y-Term-darwin-arm64-0.1.0.dmg .*update-darwin-arm64.json --clobber/);
+  assert.equal(result.manifest.currentRelease, '0.1.0');
+  assert.equal(result.manifest.releases[0].version, '0.1.0');
+  assert.equal(result.manifest.releases[0].updateTo.url,
+    'https://github.com/younghoandrewchaa/y-term/releases/download/v0.1.0/Y-Term-darwin-arm64-0.1.0.zip');
+  assert.equal(result.manifest.releases[0].updateTo.notes, 'Release notes');
+  assert.ok(Number.isFinite(Date.parse(result.manifest.releases[0].updateTo.pub_date)));
   assert.ok(result.commands.indexOf('gh release upload') < result.commands.indexOf('gh release edit'));
   assert.match(result.commands, /gh release edit v0.1.0 --draft=false --latest/);
 });

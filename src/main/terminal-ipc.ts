@@ -3,15 +3,23 @@ import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron';
 import type { PreferencesStore } from './preferences.ts';
 import type { SessionManager } from './session-manager.ts';
 import { isSafeExternalUrl, isTrustedFrame } from './security.ts';
+import type { UpdateManager } from './updates.ts';
 
-export function registerTerminalIpc(manager: SessionManager, preferences: PreferencesStore, documentUrl: string): void {
+export function registerTerminalIpc(manager: SessionManager, preferences: PreferencesStore, documentUrl: string, updates: UpdateManager): void {
   function owner(event: IpcMainEvent | IpcMainInvokeEvent): number {
     if (!BrowserWindow.fromWebContents(event.sender) || !isTrustedFrame(event.senderFrame?.url, documentUrl, event.senderFrame === event.sender.mainFrame)) {
       throw new Error('Untrusted terminal request.');
     }
     return event.sender.id;
   }
-  ipcMain.handle('terminal:create', (event, size, sourceId) => manager.create(owner(event), size, sourceId));
+  ipcMain.handle('updates:get', event => { owner(event); return updates.getState(); });
+  ipcMain.handle('updates:check', event => { owner(event); return updates.check(true); });
+  ipcMain.handle('updates:install', event => { owner(event); return updates.install(); });
+  ipcMain.handle('terminal:create', (event, size, sourceId) => {
+    const id = manager.create(owner(event), size, sourceId);
+    void updates.check();
+    return id;
+  });
   ipcMain.handle('terminal:close', (event, id) => manager.close(owner(event), id));
   ipcMain.handle('preferences:get', event => { owner(event); return preferences.get(); });
   ipcMain.handle('preferences:save', (event, value) => {
