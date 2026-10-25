@@ -1,7 +1,21 @@
 import { accessSync, constants, statSync } from 'node:fs';
-import { basename } from 'node:path';
+import { basename, isAbsolute } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import type { Dimensions, Preferences, PtyProcess } from '../shared/terminal-protocol.ts';
+
+/** Query the shell itself so this also works without shell integration hooks. */
+export function shellCurrentDirectory(pid: number): string | undefined {
+  if (!Number.isSafeInteger(pid) || pid <= 1) return undefined;
+  try {
+    const output = execFileSync('/usr/sbin/lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-F0n'], {
+      encoding: 'utf8', timeout: 1000, maxBuffer: 64 * 1024, stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    const cwd = output.split('\0').find(field => field.startsWith('n'))?.slice(1);
+    if (!cwd || !isAbsolute(cwd) || cwd.length > 4096 || /[\x00-\x1f]/.test(cwd) || !statSync(cwd).isDirectory()) return undefined;
+    accessSync(cwd, constants.R_OK | constants.X_OK);
+    return cwd;
+  } catch { return undefined; }
+}
 
 export function buildShellLaunch(preferences: Preferences, size: Dimensions, inherited: NodeJS.ProcessEnv) {
   try { accessSync(preferences.shell, constants.X_OK); }

@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildShellLaunch, descendantsOf } from '../src/main/shell.ts';
+import { buildShellLaunch, descendantsOf, shellCurrentDirectory } from '../src/main/shell.ts';
+import { realpathSync } from 'node:fs';
 import { defaultPreferences } from '../src/main/preferences.ts';
+
+test('reads the live working directory from a local process and ignores invalid processes', () => {
+  assert.equal(shellCurrentDirectory(process.pid), realpathSync(process.cwd()));
+  for (const pid of [0, -1, 1.5, NaN, 2147483647]) assert.equal(shellCurrentDirectory(pid), undefined);
+});
 
 test('starts the configured login shell at home with a terminal environment', () => {
   const launch = buildShellLaunch({ ...defaultPreferences(), shell: '/bin/zsh', cwd: '/private/tmp' }, { cols: 90, rows: 30 }, {

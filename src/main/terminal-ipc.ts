@@ -11,7 +11,7 @@ export function registerTerminalIpc(manager: SessionManager, preferences: Prefer
     }
     return event.sender.id;
   }
-  ipcMain.handle('terminal:create', (event, size) => manager.create(owner(event), size));
+  ipcMain.handle('terminal:create', (event, size, sourceId) => manager.create(owner(event), size, sourceId));
   ipcMain.handle('terminal:close', (event, id) => manager.close(owner(event), id));
   ipcMain.handle('preferences:get', event => { owner(event); return preferences.get(); });
   ipcMain.handle('preferences:save', (event, value) => {

@@ -84,6 +84,14 @@ try {
   await page.keyboard.type("cd /private/tmp; printf 'YTERM_%s:%s\\n' 'TAB_TWO' \"$PWD\"");
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => (window as unknown as { smokeOutput: string }).smokeOutput.includes('YTERM_TAB_TWO:/private/tmp'));
+  await page.getByRole('button', { name: 'New tab', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('[role=tabpanel]:not([hidden])')?.getAttribute('data-ready') === 'true');
+  await page.locator('[role=tabpanel]:not([hidden]) .xterm-helper-textarea').focus();
+  await page.keyboard.type("printf 'YTERM_%s:%s\\n' 'INHERITED_CWD' \"$PWD\"");
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => (window as unknown as { smokeOutput: string }).smokeOutput.includes('YTERM_INHERITED_CWD:/private/tmp'));
+  await page.locator('.tab:has([aria-selected=true])').hover();
+  await page.locator('.tab:has([aria-selected=true])').getByRole('button', { name: 'Close tab' }).click();
   await verifyFileDrops(application, page, directory);
   await page.locator('[role=tab]').first().click();
   await page.locator('[role=tabpanel]:not([hidden]) .xterm-helper-textarea').focus();

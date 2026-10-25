@@ -115,3 +115,23 @@ test('reports PTY startup failures without retaining a broken session', () => {
   const manager = new SessionManager(() => { throw new Error('shell missing'); }, () => {}, () => {});
   assert.throws(() => manager.create(1, { cols: 80, rows: 24 }), /shell missing/);
 });
+
+test('inherits the live directory of the selected session and enforces window ownership', () => {
+  const directories: (string | undefined)[] = [];
+  const ptys: FakePty[] = [];
+  let cwd: string | undefined = '/private/tmp/first';
+  const manager = new SessionManager((_size, directory) => {
+    directories.push(directory);
+    const pty = new FakePty(); pty.pid = 100 + ptys.length; ptys.push(pty); return pty;
+  }, () => {}, () => {}, pid => { assert.equal(pid, 100); return cwd; });
+  const first = manager.create(1, { cols: 80, rows: 24 });
+  manager.create(1, { cols: 80, rows: 24 }, first);
+  cwd = '/private/tmp/after-cd';
+  manager.create(1, { cols: 80, rows: 24 }, first);
+  assert.throws(() => manager.create(2, { cols: 80, rows: 24 }, first), /session/i);
+  cwd = undefined;
+  manager.create(1, { cols: 80, rows: 24 }, first);
+  ptys[0].exit({ exitCode: 0 });
+  manager.create(1, { cols: 80, rows: 24 }, first);
+  assert.deepEqual(directories, [undefined, '/private/tmp/first', '/private/tmp/after-cd', undefined, undefined]);
+});

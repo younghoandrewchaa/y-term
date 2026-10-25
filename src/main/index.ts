@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { spawn } from 'node-pty';
 import { PreferencesStore, visibleBounds } from './preferences.ts';
 import { SessionManager } from './session-manager.ts';
-import { buildShellLaunch, terminatePty } from './shell.ts';
+import { buildShellLaunch, shellCurrentDirectory, terminatePty } from './shell.ts';
 import { registerTerminalIpc } from './terminal-ipc.ts';
 import type { MenuAction } from '../shared/terminal-protocol.ts';
 
@@ -74,13 +74,13 @@ function setMenu(): void {
 void app.whenReady().then(() => {
   app.dock?.setIcon(join(__dirname, '../../assets/icon.png'));
   preferences = new PreferencesStore(app.getPath('userData'));
-  manager = new SessionManager(size => {
-    const launch = buildShellLaunch(preferences.get(), size, process.env);
+  manager = new SessionManager((size, cwd) => {
+    const launch = buildShellLaunch({ ...preferences.get(), ...(cwd ? { cwd } : {}) }, size, process.env);
     return spawn(launch.file, launch.args, launch.options);
   }, (owner, event) => {
     const contents = webContents.fromId(owner);
     if (contents && !contents.isDestroyed()) contents.send('terminal:event', event);
-  }, terminatePty);
+  }, terminatePty, shellCurrentDirectory);
   registerTerminalIpc(manager, preferences, documentUrl);
   setMenu(); createWindow();
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });

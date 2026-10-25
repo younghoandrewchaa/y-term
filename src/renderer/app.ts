@@ -49,6 +49,7 @@ function select(tab: Tab): void {
 }
 async function newTab(): Promise<void> {
   if (tabs.length >= 32) { report('Close a tab before opening another (maximum 32 tabs).'); return; }
+  const sourceId = active?.view.sessionId;
   const n = ++counter;
   const wrapper = document.createElement('div'); wrapper.className = 'tab'; wrapper.setAttribute('role', 'presentation');
   const button = document.createElement('button'); button.setAttribute('role', 'tab'); button.id = `tab-${n}`;
@@ -80,7 +81,7 @@ async function newTab(): Promise<void> {
     }
   };
   select(tab);
-  try { await view.start(); }
+  try { await view.start(sourceId); }
   catch (error) { if (tabs.includes(tab)) { statusText.textContent = String(error); status.hidden = false; } }
 }
 function closeTab(tab = active): void {

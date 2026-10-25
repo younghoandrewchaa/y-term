@@ -21,6 +21,8 @@ Sessions appear in the left sidebar, with Settings at the bottom. The header sho
 
 Drag the sidebar’s right edge to resize it; the app remembers your width across restarts. Double-click the edge to reset it. You can also focus the divider with Tab and use Left/Right to resize, or Home/End for the minimum/maximum width.
 
+New tabs inherit the active shell’s current working directory. The configured starting directory is used for the first tab, or if the active shell’s directory is unavailable.
+
 - ⌘T creates a tab; ⌘W closes the current tab and immediately terminates its shell and child programs. Control-Tab and Control-Shift-Tab switch tabs.
 - ⌘C and ⌘V copy and paste using the macOS Edit menu. Control-C remains the shell interrupt key. Multiline paste asks for confirmation.
 - Shift+Enter inserts a newline in terminal agents that support modified Enter (CSI u). Enter submits as usual.

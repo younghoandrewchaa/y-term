@@ -4,7 +4,7 @@ import type { MenuAction, TerminalAPI, TerminalEvent } from '../shared/terminal-
 
 const api: TerminalAPI = {
   getPathForFile: file => webUtils.getPathForFile(file),
-  create: size => ipcRenderer.invoke('terminal:create', size),
+  create: (size, sourceId) => ipcRenderer.invoke('terminal:create', size, sourceId),
   ready: id => ipcRenderer.send('terminal:ready', id),
   write: (id, data, binary = false) => ipcRenderer.send('terminal:write', id, data, binary),
   resize: (id, cols, rows) => ipcRenderer.send('terminal:resize', id, cols, rows),

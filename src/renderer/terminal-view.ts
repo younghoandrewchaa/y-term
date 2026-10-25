@@ -65,11 +65,12 @@ export class TerminalView {
     this.observer = new ResizeObserver(() => this.fit());
     this.observer.observe(host);
   }
-  async start(): Promise<void> {
+  get sessionId(): string | undefined { return this.session.id; }
+  async start(sourceId?: string): Promise<void> {
     await document.fonts.ready;
     if (this.disposed) return;
     this.fit();
-    await this.session.start({ cols: this.terminal.cols, rows: this.terminal.rows });
+    await this.session.start({ cols: this.terminal.cols, rows: this.terminal.rows }, sourceId);
     if (!this.disposed) this.host.closest('[role=tabpanel]')?.setAttribute('data-ready', 'true');
   }
   fit(): void {

@@ -28,21 +28,25 @@ export function validateDimensions(cols: number, rows: number): void {
 
 export class SessionManager {
   private sessions = new Map<string, Session>();
-  private spawn: (size: Dimensions) => PtyProcess;
+  private spawn: (size: Dimensions, cwd?: string) => PtyProcess;
+  private currentDirectory: (pid: number) => string | undefined;
   private notify: (owner: number, event: TerminalEvent) => void;
   private terminate: (pty: PtyProcess) => void;
 
-  constructor(spawn: (size: Dimensions) => PtyProcess, notify: (owner: number, event: TerminalEvent) => void, terminate: (pty: PtyProcess) => void) {
+  constructor(spawn: (size: Dimensions, cwd?: string) => PtyProcess, notify: (owner: number, event: TerminalEvent) => void, terminate: (pty: PtyProcess) => void, currentDirectory: (pid: number) => string | undefined = () => undefined) {
     this.spawn = spawn; this.notify = notify; this.terminate = terminate;
+    this.currentDirectory = currentDirectory;
   }
 
-  create(owner: number, size: Dimensions): string {
+  create(owner: number, size: Dimensions, sourceId?: string): string {
     if (!size || typeof size !== 'object') throw new Error('Invalid terminal dimensions.');
     validateDimensions(size.cols, size.rows);
     if ([...this.sessions.values()].filter(s => s.owner === owner).length >= MAX_SESSIONS) {
       throw new Error('Close a tab before opening another (maximum 32 tabs).');
     }
-    const pty = this.spawn(size);
+    const source = sourceId === undefined ? undefined : this.owned(owner, sourceId);
+    const cwd = source && !source.ended ? this.currentDirectory(source.pty.pid) : undefined;
+    const pty = this.spawn(size, cwd);
     const id = randomUUID();
     const session: Session = {
       owner, pty, ready: false, ended: false, paused: false, sequence: 0,
