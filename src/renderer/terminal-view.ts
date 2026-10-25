@@ -17,7 +17,7 @@ export class TerminalView {
   private removeFileDrop: () => void;
   private host: HTMLElement;
 
-  constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, confirmPaste: (text: string) => Promise<boolean>) {
+  constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void) {
     this.host = host;
     this.terminal = new Terminal({ cursorBlink: true, allowProposedApi: false });
     this.apply(preferences);
@@ -62,14 +62,6 @@ export class TerminalView {
       this.session.resize(cols, rows);
     });
     this.terminal.onTitleChange(value => title(value.slice(0, 160)));
-    host.addEventListener('paste', event => {
-      const text = event.clipboardData?.getData('text/plain');
-      if (!text || !/[\r\n]/.test(text)) return;
-      event.preventDefault(); event.stopImmediatePropagation();
-      void confirmPaste(text).then(approved => {
-        if (approved && !this.disposed) { this.terminal.paste(text); this.terminal.focus(); }
-      });
-    }, true);
     this.observer = new ResizeObserver(() => this.fit());
     this.observer.observe(host);
   }

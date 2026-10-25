@@ -46,14 +46,6 @@ function select(tab: Tab): void {
   tab.button.scrollIntoView({ block: 'nearest' });
   tab.view.focus();
 }
-async function confirmPaste(text: string): Promise<boolean> {
-  const dialog = element<HTMLDialogElement>('paste-dialog');
-  if (dialog.open) return false;
-  element('paste-preview').textContent = text.slice(0, 4000);
-  dialog.returnValue = 'cancel';
-  dialog.showModal();
-  return new Promise(resolve => dialog.addEventListener('close', () => resolve(dialog.returnValue === 'paste'), { once: true }));
-}
 async function newTab(): Promise<void> {
   if (tabs.length >= 32) { report('Close a tab before opening another (maximum 32 tabs).'); return; }
   const n = ++counter;
@@ -75,7 +67,7 @@ async function newTab(): Promise<void> {
     if (active?.button === button) updateHeader();
   }, value => {
     statusText.textContent = value; status.hidden = false;
-  }, confirmPaste);
+  });
   const tab = { button, label, wrapper, panel, view, cwd: preferences.cwd, shell: preferences.shell.split('/').pop() || preferences.shell }; tabs.push(tab);
   button.onclick = () => select(tab);
   close.onclick = () => closeTab(tab);

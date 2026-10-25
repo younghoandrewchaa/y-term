@@ -14,7 +14,7 @@
   "scripts": {
     "build:icon": "node scripts/build-icon.mjs",
     "build": "node scripts/build.mjs",
-    "start": "npm run build && electron-forge start",
+    "start": "unset _VOLTA_TOOL_RECURSION && npm run build && electron-forge start",
     "package": "npm run build && electron-forge package --platform=darwin --arch=arm64",
     "make": "npm run build && electron-forge make --platform=darwin --arch=arm64",
     "release": "bash scripts/release.sh",
