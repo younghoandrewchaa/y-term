@@ -167,6 +167,7 @@ async function newTab(): Promise<void> {
   }, signal => needsAttention(tab, signal));
   const tab = { button, label, wrapper, panel, view, cwd: initialCwd, shell: preferences.shell.split('/').pop() || preferences.shell, attention: false }; tabs.push(tab);
   groupTabs();
+  view.terminal.onData(() => clearAttention(tab));
   button.onclick = () => select(tab);
   close.onclick = () => closeTab(tab);
   button.onkeydown = event => {
