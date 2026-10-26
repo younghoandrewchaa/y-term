@@ -6,7 +6,7 @@ import { spawn } from 'node-pty';
 import { AttentionBadge } from './attention.ts';
 import { PreferencesStore, visibleBounds } from './preferences.ts';
 import { SessionManager } from './session-manager.ts';
-import { buildShellLaunch, shellCurrentDirectory, shellCurrentDirectoryAsync, terminatePty } from './shell.ts';
+import { buildShellLaunch, runningAgentsAsync, shellCurrentDirectory, shellCurrentDirectoryAsync, terminatePty } from './shell.ts';
 import { registerTerminalIpc } from './terminal-ipc.ts';
 import type { MenuAction } from '../shared/terminal-protocol.ts';
 import { UpdateManager, releaseApiUrl } from './updates.ts';
@@ -145,7 +145,7 @@ void app.whenReady().then(() => {
   void updates.check();
   // Schedule after completion so slow lookups never accumulate overlapping polls.
   const refreshDirectories = async () => {
-    await manager.refreshDirectories(shellCurrentDirectoryAsync);
+    await Promise.all([manager.refreshDirectories(shellCurrentDirectoryAsync), manager.refreshAgents(runningAgentsAsync)]);
     setTimeout(refreshDirectories, 1000).unref();
   };
   void refreshDirectories();

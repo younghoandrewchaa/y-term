@@ -169,3 +169,20 @@ test('inherits the live directory of the selected session and enforces window ow
   manager.create(1, { cols: 80, rows: 24 }, first);
   assert.deepEqual(directories, [undefined, '/private/tmp/first', '/private/tmp/after-cd', undefined, undefined]);
 });
+
+test('reports agents starting and stopping and keeps state when the process snapshot fails', async () => {
+  const { manager, ptys, events } = setup();
+  const id = manager.create(1, { cols: 80, rows: 24 });
+  manager.ready(1, id);
+  await manager.refreshAgents(async () => pid => pid === 123 ? 'Claude' : undefined);
+  await manager.refreshAgents(async () => () => 'Claude');
+  await manager.refreshAgents(async () => undefined);
+  assert.deepEqual(events, [{ type: 'agent', id, agent: 'Claude' }], 'unchanged or unknown state emits nothing');
+  await manager.refreshAgents(async () => () => undefined);
+  assert.deepEqual(events.at(-1), { type: 'agent', id });
+  await manager.refreshAgents(async () => () => 'Codex');
+  ptys[0].exit({ exitCode: 0 });
+  events.length = 0;
+  await manager.refreshAgents(async () => () => 'Codex');
+  assert.deepEqual(events, [{ type: 'agent', id }], 'an exited shell clears its agent');
+});

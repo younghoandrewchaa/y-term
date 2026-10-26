@@ -28,7 +28,7 @@ export class TerminalView {
   private removeImagePaste: () => void;
   private host: HTMLElement;
 
-  constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, directory: (cwd: string) => void, attention: (signal: AttentionSignal) => void) {
+  constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, directory: (cwd: string) => void, agent: (name?: string) => void, attention: (signal: AttentionSignal) => void) {
     this.host = host;
     const activateLink = (event: MouseEvent, uri: string) => {
       if (event.metaKey || event.ctrlKey) void window.terminal.openLink(uri).catch(error => status(String(error)));
@@ -46,6 +46,7 @@ export class TerminalView {
       write: (data, processed) => this.terminal.write(data, processed),
       exited: message => { this.exited = true; this.terminal.options.disableStdin = true; status(message); },
       directory,
+      agent,
     });
     const canPaste = () => !!this.session.id && !this.exited && !this.disposed && host.isConnected
       && !host.closest('[hidden]') && !document.querySelector('dialog[open]');

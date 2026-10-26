@@ -10,6 +10,7 @@ const MAX_SESSIONS = 32;
 interface Session {
   owner: number;
   cwd?: string;
+  agent?: string;
   pty: PtyProcess;
   ready: boolean;
   ended: boolean;
@@ -133,6 +134,17 @@ export class SessionManager {
       session.cwd = cwd;
       this.deliver(session, { type: 'directory', id, cwd });
     }));
+  }
+
+  async refreshAgents(read: () => Promise<((pid: number) => string | undefined) | undefined>): Promise<void> {
+    const agentOf = await read();
+    if (!agentOf) return;
+    for (const [id, session] of this.sessions) {
+      const agent = session.ended ? undefined : agentOf(session.pty.pid);
+      if (agent === session.agent) continue;
+      session.agent = agent;
+      this.deliver(session, agent ? { type: 'agent', id, agent } : { type: 'agent', id });
+    }
   }
 
   private owned(owner: number, id: string): Session {

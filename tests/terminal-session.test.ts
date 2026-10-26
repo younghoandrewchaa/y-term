@@ -19,6 +19,7 @@ function fixture(create: () => Promise<string> = async () => 'session-1') {
     write: (data, callback) => { writes.push(data); processed.push(callback); },
     exited: message => calls.push(['exit', message]),
     directory: cwd => calls.push(['directory', cwd]),
+    agent: name => calls.push(['agent', name]),
   });
   return { session, calls, writes, processed, receive: (event: TerminalEvent) => receive(event) };
 }

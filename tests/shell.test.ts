@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildShellLaunch, descendantsOf, shellCurrentDirectory } from '../src/main/shell.ts';
+import { agentName, agentOf, buildShellLaunch, descendantsOf, shellCurrentDirectory } from '../src/main/shell.ts';
 import { realpathSync } from 'node:fs';
 import { defaultPreferences } from '../src/main/preferences.ts';
 
@@ -48,4 +48,19 @@ test('forcefully ends owned children before the shell, skipping reused process I
     terminatePty({ pid: 10, kill: (signal?: string) => { killed.push(['shell', signal]); } } as import('../src/shared/terminal-protocol.ts').PtyProcess);
     assert.deepEqual(killed, [[11, 'SIGKILL'], ['shell', 'SIGKILL']]);
   } finally { exec.mock.restore(); kill.mock.restore(); syncBuiltinESMExports(); }
+});
+
+test('recognises coding agents from native binaries and interpreter scripts', () => {
+  assert.equal(agentName('claude --resume'), 'Claude');
+  assert.equal(agentName('/opt/homebrew/bin/codex exec'), 'Codex');
+  assert.equal(agentName('node --no-warnings /usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js'), 'Claude');
+  assert.equal(agentName('node /usr/local/bin/gemini'), 'Gemini');
+  assert.equal(agentName('python3.12 /Users/me/.local/bin/aider --model x'), 'Aider');
+  for (const command of ['vim claude.md', 'node server.js', '-zsh', 'git commit -m codex', '']) assert.equal(agentName(command), undefined);
+});
+
+test('finds an agent below the shell but not in unrelated processes', () => {
+  const snapshot = '10 1 -zsh\n11 10 claude\n12 11 node /tmp/x.js\n20 1 -zsh\n21 20 vim\n30 1 codex\n';
+  assert.equal(agentOf(10, snapshot), 'Claude');
+  assert.equal(agentOf(20, snapshot), undefined);
 });

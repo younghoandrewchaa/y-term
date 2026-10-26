@@ -4,6 +4,7 @@ interface Output {
   write(data: string, processed: () => void): void;
   exited(message: string): void;
   directory(cwd: string): void;
+  agent(name?: string): void;
 }
 
 /** Owns the subscription before starting the PTY; ready releases buffered output. */
@@ -22,6 +23,7 @@ export class TerminalSession {
           if (!this.closed) api.acknowledge(event.id, event.sequence);
         });
       } else if (event.type === 'directory') output.directory(event.cwd);
+      else if (event.type === 'agent') output.agent(event.agent);
       else output.exited(event.error ?? `Shell exited with status ${event.exitCode}${event.signal ? ` (signal ${event.signal})` : ''}. Open a new tab to start a fresh shell.`);
     });
   }

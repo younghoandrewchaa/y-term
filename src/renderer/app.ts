@@ -23,7 +23,7 @@ const settings = element<HTMLDialogElement>('settings');
 const settingsForm = element<HTMLFormElement>('settings-form');
 const findBar = element('find-bar');
 const findInput = element<HTMLInputElement>('find-input');
-interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string; attention: boolean }
+interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string; agent?: string; attention: boolean }
 const tabs: Tab[] = [];
 let active: Tab | undefined;
 let preferences: Preferences;
@@ -98,7 +98,7 @@ function groupTabs(): void {
 function updateHeader(): void {
   element('active-title').textContent = active?.label.textContent || 'Y-Term';
   element('active-directory').textContent = active?.cwd || '';
-  element('active-shell').textContent = active ? `${active.shell} · Local` : 'Local';
+  element('active-shell').textContent = active ? `${active.agent ?? active.shell} · Local` : 'Local';
   element('session-count').textContent = String(tabs.length);
   element('empty-state').hidden = tabs.length > 0;
 }
@@ -164,8 +164,16 @@ async function newTab(): Promise<void> {
     directory.textContent = directoryName(cwd);
     groupTabs();
     if (active === tab) updateHeader();
+  }, agent => {
+    tab.agent = agent;
+    const icon = element<HTMLTemplateElement>(agent ? 'agent-icon' : 'session-icon').content.cloneNode(true) as DocumentFragment;
+    if (agent) icon.querySelector('svg')?.setAttribute('aria-label', `${agent} running`);
+    button.querySelector('svg')?.replaceWith(icon);
+    if (agent) wrapper.dataset.agent = agent;
+    else delete wrapper.dataset.agent;
+    if (active === tab) updateHeader();
   }, signal => needsAttention(tab, signal));
-  const tab = { button, label, wrapper, panel, view, cwd: initialCwd, shell: preferences.shell.split('/').pop() || preferences.shell, attention: false }; tabs.push(tab);
+  const tab: Tab = { button, label, wrapper, panel, view, cwd: initialCwd, shell: preferences.shell.split('/').pop() || preferences.shell, attention: false }; tabs.push(tab);
   groupTabs();
   view.terminal.onData(() => clearAttention(tab));
   button.onclick = () => select(tab);

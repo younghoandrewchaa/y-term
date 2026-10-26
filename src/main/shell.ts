@@ -68,6 +68,46 @@ export function descendantsOf(parent: number, snapshot: string): number[] {
   return result;
 }
 
+const AGENTS: Record<string, string> = {
+  claude: 'Claude', codex: 'Codex', gemini: 'Gemini', 'cursor-agent': 'Cursor', opencode: 'OpenCode',
+  aider: 'Aider', amp: 'Amp', copilot: 'Copilot', goose: 'Goose', crush: 'Crush', pi: 'Pi',
+};
+const AGENT_PACKAGES: [string, string][] = [['/@anthropic-ai/claude-code/', 'Claude'], ['/@openai/codex/', 'Codex'], ['/@google/gemini-cli/', 'Gemini']];
+
+/** Recognise coding agents from argv, including npm installs run as `node <script>`. */
+export function agentName(command: string): string | undefined {
+  const [program = '', ...args] = command.trim().split(/\s+/);
+  const name = (path: string) => (path.split('/').pop() ?? '').replace(/\.[cm]?js$/, '');
+  if (AGENTS[name(program)]) return AGENTS[name(program)];
+  if (!/^(node|bun|deno|python[\d.]*)$/.test(name(program))) return undefined;
+  const script = args.find(arg => !arg.startsWith('-'));
+  if (!script) return undefined;
+  return AGENTS[name(script)] ?? AGENT_PACKAGES.find(([path]) => script.includes(path))?.[1];
+}
+
+/** Find an agent running anywhere below the shell, so background and nested agents also count. */
+export function agentOf(parent: number, snapshot: string): string | undefined {
+  const commands = new Map(snapshot.trim().split('\n').map(line => {
+    const [, pid, command] = /^\s*(\d+)\s+\d+\s+(.*)$/.exec(line) ?? [];
+    return [Number(pid), command ?? ''] as const;
+  }));
+  for (const pid of descendantsOf(parent, snapshot)) {
+    const agent = agentName(commands.get(pid) ?? '');
+    if (agent) return agent;
+  }
+  return undefined;
+}
+
+/** One process snapshot serves every tab; undefined keeps the previous state on failure. */
+export async function runningAgentsAsync(): Promise<((pid: number) => string | undefined) | undefined> {
+  try {
+    const { stdout } = await execFileAsync('/bin/ps', ['-axo', 'pid=,ppid=,args='], {
+      encoding: 'utf8', timeout: 1000, maxBuffer: 16 * 1024 * 1024,
+    });
+    return pid => agentOf(pid, stdout);
+  } catch { return undefined; }
+}
+
 export function terminatePty(pty: PtyProcess): void {
   // Foreground programs can use a different process group and ignore SIGHUP.
   // Closing a tab ends its processes immediately, including during app quit.

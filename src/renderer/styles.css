@@ -15,6 +15,7 @@
   --bright: #eef0f3;
   --accent: #7aa2ff;
   --green: #3dd68c;
+  --agent: #c39bff;
   --attention: #e8c47f;
   --danger: #f28b91;
 }
@@ -33,6 +34,7 @@
   --bright: #23262b;
   --accent: #4269c2;
   --green: #237a51;
+  --agent: #7f4fc2;
   --attention: #896017;
   --danger: #b53847;
 }
@@ -69,6 +71,7 @@ kbd { font: inherit; font-size: 11px; color: var(--muted); }
 .tab-attention { display: none; position: absolute; right: 13px; width: 7px; height: 7px; border-radius: 50%; background: var(--attention); pointer-events: none; }
 .tab[data-attention] .tab-attention { display: block; }
 .tab[data-attention]:hover .tab-attention, .tab[data-attention]:focus-within .tab-attention { display: none; }
+.tab[data-agent] [role=tab] svg { color: var(--agent); }
 .tab[data-attention] [role=tab] svg { color: var(--attention); }
 .sidebar-action { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; flex-shrink: 0; padding: 0 10px; border: 0; text-align: left; color: var(--secondary); font-weight: 500; }
 .sidebar-action kbd { margin-left: auto; }
