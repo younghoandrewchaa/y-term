@@ -1,11 +1,14 @@
 import { BrowserWindow, ipcMain, shell } from 'electron';
-import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron';
+import type { IpcMainEvent, IpcMainInvokeEvent, WebContents } from 'electron';
+import { notificationText } from '../shared/attention.ts';
+import type { AttentionBadge } from './attention.ts';
 import type { PreferencesStore } from './preferences.ts';
 import type { SessionManager } from './session-manager.ts';
 import { isSafeExternalUrl, isTrustedFrame } from './security.ts';
 import type { UpdateManager } from './updates.ts';
 
-export function registerTerminalIpc(manager: SessionManager, preferences: PreferencesStore, documentUrl: string, updates: UpdateManager): void {
+export function registerTerminalIpc(manager: SessionManager, preferences: PreferencesStore, documentUrl: string, updates: UpdateManager,
+  badge: AttentionBadge, notify: (sender: WebContents, tab: string, title: string, body: string) => void): void {
   function owner(event: IpcMainEvent | IpcMainInvokeEvent): number {
     if (!BrowserWindow.fromWebContents(event.sender) || !isTrustedFrame(event.senderFrame?.url, documentUrl, event.senderFrame === event.sender.mainFrame)) {
       throw new Error('Untrusted terminal request.');
@@ -42,4 +45,9 @@ export function registerTerminalIpc(manager: SessionManager, preferences: Prefer
   listen('terminal:write', (event, id, data, binary) => manager.write(event.sender.id, id, data, binary));
   listen('terminal:resize', (event, id, cols, rows) => manager.resize(event.sender.id, id, cols, rows));
   listen('terminal:ack', (event, id, sequence) => manager.ack(event.sender.id, id, sequence));
+  listen('attention:count', (event, count) => badge.set(event.sender.id, count));
+  listen('attention:notify', (event, tab, title, body) => {
+    if (typeof tab !== 'string' || !/^tab-\d+$/.test(tab)) return;
+    notify(event.sender, tab, notificationText(title, 'Y-Term'), notificationText(body, 'Needs your attention'));
+  });
 }

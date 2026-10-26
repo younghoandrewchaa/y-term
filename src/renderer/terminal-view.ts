@@ -2,6 +2,8 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { parseOsc777, parseOsc9 } from '../shared/attention.ts';
+import type { AttentionSignal } from '../shared/attention.ts';
 import type { Preferences } from '../shared/terminal-protocol.ts';
 import { TerminalSession } from './terminal-session.ts';
 import { attachTerminalFileDrop } from './file-drop.ts';
@@ -26,7 +28,7 @@ export class TerminalView {
   private removeImagePaste: () => void;
   private host: HTMLElement;
 
-  constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, directory: (cwd: string) => void) {
+  constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, directory: (cwd: string) => void, attention: (signal: AttentionSignal) => void) {
     this.host = host;
     const activateLink = (event: MouseEvent, uri: string) => {
       if (event.metaKey || event.ctrlKey) void window.terminal.openLink(uri).catch(error => status(String(error)));
@@ -83,6 +85,10 @@ export class TerminalView {
       this.session.resize(cols, rows);
     });
     this.terminal.onTitleChange(value => title(value.slice(0, 160)));
+    // Agents such as Claude Code and Codex ring the bell or post a notification when waiting for input.
+    this.terminal.onBell(() => attention({}));
+    this.terminal.parser.registerOscHandler(9, data => { const signal = parseOsc9(data); if (signal) attention(signal); return true; });
+    this.terminal.parser.registerOscHandler(777, data => { const signal = parseOsc777(data); if (signal) attention(signal); return true; });
     this.observer = new ResizeObserver(() => this.fit());
     this.observer.observe(host);
   }

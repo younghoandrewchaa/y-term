@@ -1,8 +1,9 @@
-import { app, autoUpdater, BrowserWindow, dialog, Menu, net, screen, webContents } from 'electron';
-import type { MenuItemConstructorOptions } from 'electron';
+import { app, autoUpdater, BrowserWindow, dialog, Menu, net, Notification, screen, webContents } from 'electron';
+import type { MenuItemConstructorOptions, WebContents } from 'electron';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawn } from 'node-pty';
+import { AttentionBadge } from './attention.ts';
 import { PreferencesStore, visibleBounds } from './preferences.ts';
 import { SessionManager } from './session-manager.ts';
 import { buildShellLaunch, shellCurrentDirectory, shellCurrentDirectoryAsync, terminatePty } from './shell.ts';
@@ -19,9 +20,31 @@ const documentUrl = pathToFileURL(documentPath).href;
 let preferences: PreferencesStore;
 let manager: SessionManager;
 let updates: UpdateManager;
+const attention = new AttentionBadge(text => app.dock?.setBadge(text));
+// Electron drops click handlers of notifications that are garbage collected.
+const notifications = new Set<Notification>();
 
 function sendAction(action: MenuAction): void {
   BrowserWindow.getFocusedWindow()?.webContents.send('terminal:action', action);
+}
+
+function notifyAttention(contents: WebContents, tab: string, title: string, body: string): void {
+  const window = BrowserWindow.fromWebContents(contents);
+  if (!window || window.isFocused()) return;
+  app.dock?.bounce('informational');
+  if (!Notification.isSupported()) return;
+  const notification = new Notification({ title, body });
+  notifications.add(notification);
+  notification.on('close', () => notifications.delete(notification));
+  notification.on('click', () => {
+    notifications.delete(notification);
+    if (window.isDestroyed()) return;
+    if (window.isMinimized()) window.restore();
+    window.show();
+    window.focus();
+    window.webContents.send('attention:activate', tab);
+  });
+  notification.show();
 }
 
 function createWindow(): void {
@@ -43,13 +66,14 @@ function createWindow(): void {
   window.webContents.on('will-attach-webview', event => event.preventDefault());
   window.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   window.webContents.session.setPermissionCheckHandler(() => false);
-  window.webContents.on('render-process-gone', () => manager.closeOwner(owner));
+  window.webContents.on('render-process-gone', () => { manager.closeOwner(owner); attention.clear(owner); });
   window.on('close', () => {
     try { preferences.save({ ...preferences.get(), bounds: window.getNormalBounds() }); }
     catch (error) { console.error('Could not save window bounds:', error); }
     manager.closeOwner(owner);
+    attention.clear(owner);
   });
-  window.webContents.on('destroyed', () => manager.closeOwner(owner));
+  window.webContents.on('destroyed', () => { manager.closeOwner(owner); attention.clear(owner); });
   window.once('ready-to-show', () => window.show());
   void window.loadURL(documentUrl).catch(error => dialog.showErrorBox('Y-Term could not open', String(error)));
 }
@@ -117,7 +141,7 @@ void app.whenReady().then(() => {
       for (const window of BrowserWindow.getAllWindows()) window.webContents.send('updates:state', state);
     },
   });
-  registerTerminalIpc(manager, preferences, documentUrl, updates);
+  registerTerminalIpc(manager, preferences, documentUrl, updates, attention, notifyAttention);
   void updates.check();
   // Schedule after completion so slow lookups never accumulate overlapping polls.
   const refreshDirectories = async () => {

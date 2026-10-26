@@ -46,6 +46,9 @@ export interface TerminalAPI {
   getPreferences(): Promise<Preferences>;
   savePreferences(value: Preferences): Promise<Preferences>;
   openLink(url: string): Promise<void>;
+  setAttentionCount(count: number): void;
+  notifyAttention(tab: string, title: string, body: string): void;
+  onAttentionActivate(listener: (tab: string) => void): () => void;
 }
 
 declare global { interface Window { terminal: TerminalAPI } }

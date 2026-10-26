@@ -20,7 +20,7 @@ export async function verifyImagePaste(application: ElectronApplication, page: P
     await page.keyboard.press('Control+u');
     const [{ id }] = await takeWrites();
     await application.evaluate(({ clipboard, nativeImage }) => {
-      clipboard.writeImage(nativeImage.createFromBuffer(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64')));
+      clipboard.writeImage(nativeImage.createFromBitmap(Buffer.alloc(4, 255), { width: 1, height: 1 }));
     });
     for (let index = 0; index < 2; index++) {
       await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.paste());

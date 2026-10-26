@@ -32,5 +32,12 @@ const api: TerminalAPI = {
   getPreferences: () => ipcRenderer.invoke('preferences:get'),
   savePreferences: value => ipcRenderer.invoke('preferences:save', value),
   openLink: url => ipcRenderer.invoke('terminal:open-link', url),
+  setAttentionCount: count => ipcRenderer.send('attention:count', count),
+  notifyAttention: (tab, title, body) => ipcRenderer.send('attention:notify', tab, title, body),
+  onAttentionActivate: listener => {
+    const receive = (_event: IpcRendererEvent, tab: string) => listener(tab);
+    ipcRenderer.on('attention:activate', receive);
+    return () => { ipcRenderer.removeListener('attention:activate', receive); };
+  },
 };
 contextBridge.exposeInMainWorld('terminal', api);

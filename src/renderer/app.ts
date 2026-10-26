@@ -2,6 +2,7 @@ import '@xterm/xterm/css/xterm.css';
 import './styles.css';
 import { TerminalView } from './terminal-view.ts';
 import { attachSidebarResize } from './sidebar-resize.ts';
+import type { AttentionSignal } from '../shared/attention.ts';
 import type { MenuAction, Preferences } from '../shared/terminal-protocol.ts';
 import type { UpdateState } from '../shared/update-protocol.ts';
 
@@ -22,7 +23,7 @@ const settings = element<HTMLDialogElement>('settings');
 const settingsForm = element<HTMLFormElement>('settings-form');
 const findBar = element('find-bar');
 const findInput = element<HTMLInputElement>('find-input');
-interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string }
+interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string; attention: boolean }
 const tabs: Tab[] = [];
 let active: Tab | undefined;
 let preferences: Preferences;
@@ -101,8 +102,26 @@ function updateHeader(): void {
   element('session-count').textContent = String(tabs.length);
   element('empty-state').hidden = tabs.length > 0;
 }
+function publishAttention(): void { window.terminal.setAttentionCount(tabs.filter(tab => tab.attention).length); }
+function needsAttention(tab: Tab, signal: AttentionSignal): void {
+  // The user is already looking at it; repeated signals collapse until it is seen.
+  if ((tab === active && document.hasFocus()) || tab.attention) return;
+  tab.attention = true;
+  tab.wrapper.dataset.attention = 'true';
+  tab.button.setAttribute('aria-description', 'Needs attention');
+  publishAttention();
+  window.terminal.notifyAttention(tab.button.id, signal.title || tab.label.textContent || 'Y-Term', signal.body || `Needs your attention in ${directoryName(tab.cwd)}`);
+}
+function clearAttention(tab: Tab): void {
+  if (!tab.attention) return;
+  tab.attention = false;
+  delete tab.wrapper.dataset.attention;
+  tab.button.removeAttribute('aria-description');
+  publishAttention();
+}
 function select(tab: Tab): void {
   active = tab;
+  clearAttention(tab);
   for (const item of tabs) {
     const selected = item === tab;
     item.button.setAttribute('aria-selected', String(selected));
@@ -126,13 +145,14 @@ async function newTab(): Promise<void> {
   const text = document.createElement('span'); text.className = 'tab-text'; text.append(label, directory);
   button.append(element<HTMLTemplateElement>('session-icon').content.cloneNode(true), text);
   const close = document.createElement('button'); close.className = 'tab-close'; close.textContent = '×'; close.setAttribute('aria-label', 'Close tab');
+  const indicator = document.createElement('span'); indicator.className = 'tab-attention'; indicator.setAttribute('aria-hidden', 'true');
   const panel = document.createElement('section'); panel.className = 'terminal-panel'; panel.id = `panel-${n}`;
   panel.setAttribute('role', 'tabpanel'); panel.setAttribute('aria-labelledby', button.id); button.setAttribute('aria-controls', panel.id);
   const status = document.createElement('div'); status.className = 'session-status'; status.hidden = true; status.setAttribute('role', 'status');
   const restart = document.createElement('button'); restart.textContent = 'New shell'; restart.onclick = () => { void newTab(); };
   const statusText = document.createElement('span'); status.append(statusText, restart);
   const host = document.createElement('div'); host.className = 'terminal-host'; panel.append(status, host);
-  wrapper.append(button, close); tablist.append(wrapper); panels.append(panel);
+  wrapper.append(button, indicator, close); tablist.append(wrapper); panels.append(panel);
   const view = new TerminalView(host, preferences, title => {
     label.textContent = title || `Shell ${n}`;
     button.title = label.textContent;
@@ -144,8 +164,8 @@ async function newTab(): Promise<void> {
     directory.textContent = directoryName(cwd);
     groupTabs();
     if (active === tab) updateHeader();
-  });
-  const tab = { button, label, wrapper, panel, view, cwd: initialCwd, shell: preferences.shell.split('/').pop() || preferences.shell }; tabs.push(tab);
+  }, signal => needsAttention(tab, signal));
+  const tab = { button, label, wrapper, panel, view, cwd: initialCwd, shell: preferences.shell.split('/').pop() || preferences.shell, attention: false }; tabs.push(tab);
   groupTabs();
   button.onclick = () => select(tab);
   close.onclick = () => closeTab(tab);
@@ -164,6 +184,7 @@ function closeTab(tab = active): void {
   if (!tab) return;
   const index = tabs.indexOf(tab); if (index === -1) return;
   tabs.splice(index, 1); tab.wrapper.remove(); tab.panel.remove();
+  if (tab.attention) publishAttention();
   void tab.view.close().catch(report);
   if (active === tab) {
     active = undefined;
@@ -234,7 +255,15 @@ element('find-next').onclick = () => find();
 element('find-previous').onclick = () => find(true);
 element('find-close').onclick = () => { findBar.hidden = true; active?.view.focus(); };
 window.terminal.onAction(action);
-window.addEventListener('beforeunload', () => { for (const tab of tabs) void tab.view.close(); });
+window.terminal.onAttentionActivate(id => {
+  const tab = tabs.find(item => item.button.id === id);
+  if (tab && !document.querySelector('dialog[open]')) select(tab);
+});
+window.addEventListener('focus', () => { if (active) clearAttention(active); });
+window.addEventListener('beforeunload', () => {
+  for (const tab of tabs) void tab.view.close();
+  window.terminal.setAttentionCount(0);
+});
 void window.terminal.getPreferences().then(value => {
   preferences = value;
   attachSidebarResize(element('sidebar'), element('sidebar-resize'), preferences.sidebarWidth, width => {

@@ -9,6 +9,7 @@ import { verifyLinks } from './link-smoke.ts';
 import { verifyVisualDesign } from './visual-smoke.ts';
 import { verifySidebarResize } from './sidebar-smoke.ts';
 import { verifySessionDirectories } from './directory-smoke.ts';
+import { verifyAttention } from './attention-smoke.ts';
 
 const directory = await mkdtemp(join(tmpdir(), 'y-term-smoke-'));
 const executablePath = process.env.Y_TERM_EXECUTABLE;
@@ -56,11 +57,12 @@ try {
       ipcMain.removeListener('terminal:write', state.listener);
     });
   }
+  // Ctrl+U is kill-whole-line in zsh but deletes only before the cursor in bash,
+  // so keep the cursor at the end where both shells discard the same text.
   await page.keyboard.press('Control+u');
-  await page.keyboard.type("discard printf 'YTERM_%s\\n' 'DELETE_OK'");
-  await page.keyboard.press('Control+a');
-  for (let index = 0; index < 'discard '.length; index++) await page.keyboard.press('ArrowRight');
+  await page.keyboard.type('discard');
   await page.keyboard.press('Meta+Backspace');
+  await page.keyboard.type("printf 'YTERM_%s\\n' 'DELETE_OK'");
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => (window as unknown as { smokeOutput: string }).smokeOutput.includes('YTERM_DELETE_OK'));
   await page.keyboard.type("printf 'YTERM_BEFORE:'; stty size");
@@ -125,8 +127,9 @@ try {
   await verifyLinks(application, page);
   await verifyVisualDesign(application, page);
   await verifySidebarResize(application, page);
+  await verifyAttention(application, page);
   assert.deepEqual(errors, []);
-  console.log('PASS: shell commands, keyboard input, native image/text paste, file/folder drops, resize, independent tabs, closure, URL policy, sidebar layout, themes, search, and empty state.');
+  console.log('PASS: shell commands, keyboard input, native image/text paste, file/folder drops, resize, independent tabs, closure, URL policy, sidebar layout, themes, search, empty state, and attention indicators.');
 } finally {
   await application.close();
   await rm(directory, { recursive: true, force: true });
