@@ -7,6 +7,13 @@ import { TerminalSession } from './terminal-session.ts';
 import { attachTerminalFileDrop } from './file-drop.ts';
 import { attachTerminalImagePaste } from './image-paste.ts';
 
+// macOS line-editing shortcuts translated to readline control characters.
+const COMMAND_KEY_INPUT: Record<string, string> = {
+  Backspace: '\x15', // Ctrl+U: delete to start of line
+  ArrowLeft: '\x01', // Ctrl+A: move to start of line
+  ArrowRight: '\x05', // Ctrl+E: move to end of line
+};
+
 export class TerminalView {
   readonly terminal: Terminal;
   readonly search = new SearchAddon();
@@ -53,11 +60,13 @@ export class TerminalView {
     });
     this.terminal.onData(data => { if (this.session.id) window.terminal.write(this.session.id, data); });
     this.terminal.attachCustomKeyEventHandler(event => {
-      if (event.key === 'Backspace' && event.metaKey && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.isComposing) {
+      const commandInput = event.metaKey && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.isComposing
+        ? COMMAND_KEY_INPUT[event.key]
+        : undefined;
+      if (commandInput) {
         if (event.type === 'keydown') {
           event.preventDefault();
-          // Ctrl+U deletes back to the beginning of the shell input line.
-          this.terminal.input('\x15');
+          this.terminal.input(commandInput);
         }
         return false;
       }
