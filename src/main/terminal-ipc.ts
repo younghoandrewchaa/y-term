@@ -13,7 +13,7 @@ export function registerTerminalIpc(manager: SessionManager, preferences: Prefer
     return event.sender.id;
   }
   ipcMain.handle('updates:get', event => { owner(event); return updates.getState(); });
-  ipcMain.handle('updates:check', event => { owner(event); return updates.check(true); });
+  ipcMain.handle('updates:check', async event => { owner(event); await updates.check(true); return updates.getState(); });
   ipcMain.handle('updates:install', event => { owner(event); return updates.install(); });
   ipcMain.handle('terminal:create', (event, size, sourceId) => {
     const id = manager.create(owner(event), size, sourceId);

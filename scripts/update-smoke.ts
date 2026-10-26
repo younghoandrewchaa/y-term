@@ -12,6 +12,7 @@ try {
   const version = await application.evaluate(({ app }) => app.getVersion());
   await page.waitForFunction(() => document.querySelector('[role=tabpanel]')?.getAttribute('data-ready') === 'true');
   assert.equal(await page.locator('#app-version').textContent(), `v${version}`);
+  assert.equal(await page.locator('#update-check').isVisible(), false);
   assert.equal(await page.locator('#update-button').isVisible(), false);
   const publish = async (state: UpdateState) => {
     await application.evaluate(({ BrowserWindow }, value) => {
@@ -20,6 +21,12 @@ try {
     await page.waitForFunction(status => document.getElementById('app-updates')?.dataset.status === status, state.status);
   };
   await application.evaluate(({ ipcMain }) => {
+    ipcMain.removeHandler('updates:check');
+    ipcMain.handle('updates:check', event => {
+      event.sender.send('updates:state', { version: '0.1.3', status: 'checking' });
+      event.sender.send('updates:state', { version: '0.1.3', status: 'idle' });
+      return { version: '0.1.3', status: 'idle' };
+    });
     ipcMain.removeHandler('updates:install');
     ipcMain.handle('updates:install', event => {
       event.sender.send('updates:state', { version: '0.1.3', status: 'downloading', latestVersion: '0.2.0' });
@@ -31,6 +38,15 @@ try {
     }, theme);
     await page.reload();
     await page.waitForFunction(() => document.querySelector('[role=tabpanel]')?.getAttribute('data-ready') === 'true');
+    await publish({ version, status: 'idle' });
+    assert.equal(await page.locator('#update-status').isVisible(), false);
+    await page.getByRole('button', { name: 'Check for updates' }).click();
+    await page.waitForFunction(() => document.getElementById('update-status')?.textContent === 'Y-Term is up to date');
+    assert.equal(await page.locator('#update-check').isEnabled(), true);
+    await publish({ version, status: 'checking' });
+    assert.equal(await page.locator('#update-check').isDisabled(), true);
+    await publish({ version, status: 'idle' });
+    assert.equal(await page.locator('#update-status').isVisible(), false);
     await publish({ version, status: 'available', latestVersion: '0.2.0' });
     assert.equal(await page.locator('#update-status').textContent(), 'Version 0.2.0 available');
     await page.screenshot({ path: join(tmpdir(), `y-term-update-${theme}.png`) });
@@ -48,6 +64,7 @@ try {
   }
   await publish({ version, status: 'disabled' });
   assert.equal(await page.locator('#update-button').isVisible(), false);
+  assert.equal(await page.locator('#update-check').isVisible(), false);
   assert.equal(await page.locator('[role=tab]').count(), 1);
   const opened = application.waitForEvent('window');
   await application.evaluate(({ Menu }) => {
@@ -61,7 +78,7 @@ try {
   await second.waitForFunction(() => document.getElementById('app-updates')?.dataset.status === 'available');
   assert.equal(await second.locator('#update-status').textContent(), 'Version 0.2.0 available');
   await second.close();
-  console.log('PASS: sidebar version, update notice, click, busy states, retries, both themes and multiple windows; no real downloads.');
+  console.log('PASS: sidebar version, manual check, update notice, click, busy states, retries, both themes and multiple windows; no real downloads.');
 } finally {
   await application.close();
   await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });

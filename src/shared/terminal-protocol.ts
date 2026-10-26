@@ -31,7 +31,7 @@ export interface Preferences {
 export type MenuAction = 'new-tab' | 'close-tab' | 'find' | 'settings' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'clear' | 'next-tab' | 'previous-tab';
 export interface TerminalAPI {
   getUpdateState(): Promise<UpdateState>;
-  checkForUpdates(): Promise<void>;
+  checkForUpdates(): Promise<UpdateState>;
   installUpdate(): Promise<void>;
   onUpdateState(listener: (state: UpdateState) => void): () => void;
   getPathForFile(file: File): string;

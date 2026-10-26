@@ -29,6 +29,7 @@ let preferences: Preferences;
 let counter = 0;
 
 let updateState: UpdateState | undefined;
+let upToDate = false;
 function renderUpdate(state: UpdateState): void {
   updateState = state;
   element('app-updates').dataset.status = state.status;
@@ -42,15 +43,32 @@ function renderUpdate(state: UpdateState): void {
     error: state.message || 'Update failed. Try again.',
   };
   status.textContent = labels[state.status] || '';
+  // Only a manual check confirms "up to date"; any later state change clears it.
+  if (state.status !== 'idle') upToDate = false;
+  else if (upToDate) status.textContent = 'Y-Term is up to date';
   status.hidden = !status.textContent;
   button.hidden = !busy && state.status !== 'available' && state.status !== 'error';
   button.disabled = busy;
+  const check = element<HTMLButtonElement>('update-check');
+  check.hidden = state.status === 'disabled';
+  check.disabled = busy || state.status === 'checking';
   button.textContent = state.status === 'error' ? (state.latestVersion ? 'Retry update' : 'Retry check') :
     busy ? (state.status === 'confirming' ? 'Update' : 'Updating…') : 'Update';
 }
 window.terminal.onUpdateState(renderUpdate);
 // Subscribe first, then ignore an initial snapshot if a newer event arrived.
 void window.terminal.getUpdateState().then(state => { if (!updateState) renderUpdate(state); }).catch(report);
+element<HTMLButtonElement>('update-check').onclick = () => {
+  if (!updateState) return;
+  element<HTMLButtonElement>('update-check').disabled = true;
+  // Use the returned state: the reply may arrive before or after the state events.
+  void window.terminal.checkForUpdates().then(state => {
+    upToDate = state.status === 'idle';
+    renderUpdate(state);
+  }, () => {
+    if (updateState) renderUpdate({ ...updateState, status: 'error', message: 'Could not check for updates.' });
+  });
+};
 element<HTMLButtonElement>('update-button').onclick = () => {
   if (!updateState) return;
   element<HTMLButtonElement>('update-button').disabled = true;

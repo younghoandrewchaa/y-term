@@ -24,7 +24,12 @@
         <span>Settings</span><kbd>⌘,</kbd>
       </button>
       <div id="app-updates" class="app-updates" aria-label="App version and updates">
-        <span id="app-version" class="app-version"></span>
+        <div class="app-version-row">
+          <span id="app-version" class="app-version"></span>
+          <button id="update-check" class="update-check" aria-label="Check for updates" title="Check for updates" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>
+          </button>
+        </div>
         <p id="update-status" role="status" aria-live="polite" hidden></p>
         <button id="update-button" hidden>Update</button>
       </div>

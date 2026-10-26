@@ -70,7 +70,16 @@ kbd { font: inherit; font-size: 11px; color: var(--muted); }
 #new-tab:hover { color: var(--bright); }
 .sidebar-bottom { margin-top: auto; padding-top: 16px; flex-shrink: 0; }
 .app-updates { margin: 8px 10px 0; padding-top: 10px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+.app-version-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 22px; }
 .app-version { font-variant-numeric: tabular-nums; }
+.update-check { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; color: var(--muted); }
+.update-check[hidden] { display: none; }
+.update-check:hover:not(:disabled) { color: var(--bright); }
+.update-check:disabled { cursor: default; opacity: .6; }
+.update-check svg { width: 14px; height: 14px; }
+[data-status=checking] .update-check svg { animation: update-spin 1s linear infinite; }
+@keyframes update-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { [data-status=checking] .update-check svg { animation: none; } }
 #update-status { margin: 8px 0; line-height: 1.5; overflow-wrap: anywhere; color: var(--secondary); }
 #update-button { width: 100%; padding: 6px 8px; font-size: 11px; color: var(--accent); }
 #update-button:disabled { cursor: default; opacity: .6; }
