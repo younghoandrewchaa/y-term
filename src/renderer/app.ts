@@ -254,7 +254,10 @@ function action(command: MenuAction): void {
   else if (command === 'next-tab') cycle(1);
   else if (command === 'previous-tab') cycle(-1);
   else if (command === 'clear') active?.view.terminal.clear();
-  else if (command === 'find') { findBar.hidden = false; findInput.focus(); findInput.select(); }
+  else if (command === 'find') {
+    if (!element('git-panel').hidden) gitPanel.toggle();
+    findBar.hidden = false; findInput.focus(); findInput.select();
+  }
   else if (command.startsWith('zoom-')) {
     const fontSize = command === 'zoom-reset' ? 14 : Math.max(9, Math.min(36, preferences.fontSize + (command === 'zoom-in' ? 1 : -1)));
     void window.terminal.savePreferences({ ...preferences, fontSize }).then(saved => { preferences = saved; applyPreferences(); }).catch(report);

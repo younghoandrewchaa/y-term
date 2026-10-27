@@ -134,4 +134,11 @@ Deliver a working read-only panel plus test evidence and screenshots. Keep stagi
 
 ## Plan review
 
-Self-reviewed against the proposed design: each requirement maps to the five tasks; resource limits and uncommon path cases have explicit tests; interface names match across main, preload, and renderer. Proposed scope and layout still need user review before implementation. Native execution is recommended because the tasks share a small set of sequential data contracts.
+Self-reviewed against the design: each requirement maps to the five tasks; resource limits and uncommon path cases have explicit tests; interface names match across main, preload, and renderer. The user approved implementation on 2026-10-27; executed sequentially in this session.
+
+## Verification results
+
+- 89 unit tests, TypeScript checks, build, and `git diff --check` passed.
+- `npm run test:git` passed with real Git repositories and Electron windows, including native code copying, both themes, 640/1000/1440-pixel windows, expand/restore, divider input, Find/modal precedence, tab/directory changes, clean/non-repository/exited-session states, and foreign-window rejection. Screenshots were inspected in `/private/tmp/y-term-git-screenshots`.
+- Existing `npm run test:e2e` timed out in default-shell output waits at `visual-smoke.ts:35` and `smoke.ts:34`. The unchanged baseline `c6c22b4` also timed out at `smoke.ts:34` in a separate temporary checkout. The complete existing suite passed with `SHELL=/bin/bash npm run test:e2e`; no unrelated shell behavior was changed.
+- Added a strict Git directory lookup alongside the existing cached file-link lookup to preserve file-link behavior. Used a new feature branch in the existing clean checkout.

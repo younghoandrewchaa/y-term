@@ -113,6 +113,24 @@ test('parses NUL rename records, submodules, and unsupported filename encodings'
   assert.equal(parsed.at(-1)?.kind, 'unsupported-path');
 });
 
+test('summarizes tracked binaries, non-UTF-8 content and dirty submodules', async t => {
+  const root = await fixture(t), source = await fixture(t);
+  await writeFile(join(source, 'child'), 'base\n'); git(source, 'add', '.'); git(source, 'commit', '-qm', 'child');
+  await writeFile(join(root, 'binary'), Buffer.from([0, 1, 2]));
+  await writeFile(join(root, 'text'), 'utf8\n');
+  git(root, '-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', source, 'module');
+  git(root, 'add', '.'); git(root, 'commit', '-qm', 'base');
+  await writeFile(join(root, 'binary'), Buffer.from([0, 3, 4]));
+  await writeFile(join(root, 'text'), Buffer.from([255, 254]));
+  await writeFile(join(root, 'module/child'), 'dirty\n');
+  const status = await service.status(1, root);
+  assert.equal(status.kind, 'ready');
+  for (const [path, reason] of [['binary', 'binary'], ['text', 'unsupported-encoding'], ['module', 'submodule']] as const) {
+    const result = await service.diff(1, root, 'unstaged', path);
+    assert.equal(result.kind, 'summary'); if (result.kind === 'summary') assert.equal(result.reason, reason);
+  }
+});
+
 test('handles missing Git, output limits, timeout and owner disposal explicitly', async t => {
   const root = await fixture(t);
   assert.equal((await new GitService({ executable: '/does-not-exist/git' }).status(1, root)).kind, 'unavailable');
