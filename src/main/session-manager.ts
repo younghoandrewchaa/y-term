@@ -30,6 +30,7 @@ export function validateDimensions(cols: number, rows: number): void {
 
 export class SessionManager {
   private sessions = new Map<string, Session>();
+  private layouts = new Map<number, { ids: string[]; active?: string }>();
   private spawn: (size: Dimensions, cwd?: string) => PtyProcess;
   private currentDirectory: (pid: number) => string | undefined;
   private notify: (owner: number, event: TerminalEvent) => void;
@@ -41,15 +42,16 @@ export class SessionManager {
     this.currentDirectory = currentDirectory;
   }
 
-  create(owner: number, size: Dimensions, sourceId?: string): string {
+  create(owner: number, size: Dimensions, sourceId?: string, cwd?: string): string {
     if (!size || typeof size !== 'object') throw new Error('Invalid terminal dimensions.');
+    if (cwd !== undefined && typeof cwd !== 'string') throw new Error('Invalid starting directory.');
     validateDimensions(size.cols, size.rows);
     if ([...this.sessions.values()].filter(s => s.owner === owner).length >= MAX_SESSIONS) {
       throw new Error('Close a tab before opening another (maximum 32 tabs).');
     }
     const source = sourceId === undefined ? undefined : this.owned(owner, sourceId);
-    const cwd = source && !source.ended ? this.currentDirectory(source.pty.pid) : undefined;
-    const pty = this.spawn(size, cwd);
+    // A source tab wins; the spawner decides whether a requested directory is usable.
+    const pty = this.spawn(size, source ? (source.ended ? undefined : this.currentDirectory(source.pty.pid)) : cwd);
     const id = randomUUID();
     const session: Session = {
       owner, pty, ready: false, ended: false, paused: false, sequence: 0,
@@ -120,6 +122,29 @@ export class SessionManager {
 
   closeOwner(owner: number): void {
     for (const [id, session] of this.sessions) if (session.owner === owner) this.close(owner, id);
+    this.layouts.delete(owner);
+  }
+
+  /** Records the renderer's sidebar order; unknown or foreign IDs are ignored. */
+  arrange(owner: number, ids: unknown, active: unknown): void {
+    if (!Array.isArray(ids) || ids.length > MAX_SESSIONS) return;
+    const owned = ids.filter((id): id is string => typeof id === 'string' && this.sessions.get(id)?.owner === owner);
+    this.layouts.set(owner, { ids: owned, ...(typeof active === 'string' && owned.includes(active) ? { active } : {}) });
+  }
+
+  /** Live tabs in sidebar order with fresh directories, for reopening after an update restart. */
+  tabsOf(owner: number): { tabs: { pid: number; cwd?: string; agent?: string }[]; active: number } {
+    const layout = this.layouts.get(owner);
+    const order = [...new Set([...(layout?.ids ?? []), ...this.sessions.keys()])].filter(id => {
+      const session = this.sessions.get(id);
+      return session?.owner === owner && !session.ended;
+    });
+    const tabs = order.map(id => {
+      const { pty, cwd, agent } = this.sessions.get(id)!;
+      const current = this.currentDirectory(pty.pid) ?? cwd;
+      return { pid: pty.pid, ...(current ? { cwd: current } : {}), ...(agent ? { agent } : {}) };
+    });
+    return { tabs, active: Math.max(0, order.indexOf(layout?.active ?? '')) };
   }
 
   get tabCount(): number {

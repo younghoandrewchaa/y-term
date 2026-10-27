@@ -3,7 +3,8 @@ import './styles.css';
 import { TerminalView } from './terminal-view.ts';
 import { attachSidebarResize } from './sidebar-resize.ts';
 import type { AttentionSignal } from '../shared/attention.ts';
-import type { MenuAction, Preferences } from '../shared/terminal-protocol.ts';
+import { AGENT_LABELS, resumeCommand } from '../shared/agent-resume.ts';
+import type { MenuAction, Preferences, RestoredTab } from '../shared/terminal-protocol.ts';
 import type { UpdateState } from '../shared/update-protocol.ts';
 
 // A file dropped outside a terminal must not navigate away from the app.
@@ -105,6 +106,7 @@ function groupTabs(): void {
     const current = tablist.children[index];
     if (current !== tab.wrapper) tablist.insertBefore(tab.wrapper, current || null);
   });
+  publishLayout();
 }
 function updateHeader(): void {
   element('active-title').textContent = active?.label.textContent || 'Y-Term';
@@ -114,6 +116,10 @@ function updateHeader(): void {
   element('empty-state').hidden = tabs.length > 0;
 }
 function publishAttention(): void { window.terminal.setAttentionCount(tabs.filter(tab => tab.attention).length); }
+// Main keeps the sidebar order so an update restart can reopen the same tabs.
+function publishLayout(): void {
+  window.terminal.setLayout(tabs.flatMap(tab => tab.view.sessionId ?? []), active?.view.sessionId);
+}
 function needsAttention(tab: Tab, signal: AttentionSignal): void {
   // The user is already looking at it; repeated signals collapse until it is seen.
   if ((tab === active && document.hasFocus()) || tab.attention) return;
@@ -140,18 +146,20 @@ function select(tab: Tab): void {
     item.panel.hidden = !selected;
   }
   updateHeader();
+  publishLayout();
   tab.button.scrollIntoView({ block: 'nearest' });
   tab.view.focus();
 }
-async function newTab(): Promise<void> {
+async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   if (tabs.length >= 32) { report('Close a tab before opening another (maximum 32 tabs).'); return; }
-  const sourceId = active?.view.sessionId;
+  // A restored tab starts in its saved directory instead of the active tab's.
+  const sourceId = restore ? undefined : active?.view.sessionId;
   const n = ++counter;
   const wrapper = document.createElement('div'); wrapper.className = 'tab'; wrapper.setAttribute('role', 'presentation');
   const button = document.createElement('button'); button.setAttribute('role', 'tab'); button.id = `tab-${n}`;
   const label = document.createElement('span'); label.className = 'tab-label'; label.textContent = `Shell ${n}`;
   const directory = document.createElement('span'); directory.className = 'tab-directory';
-  const initialCwd = active?.cwd || preferences.cwd;
+  const initialCwd = restore ? restore.cwd ?? preferences.cwd : active?.cwd || preferences.cwd;
   directory.textContent = directoryName(initialCwd);
   const text = document.createElement('span'); text.className = 'tab-text'; text.append(label, directory);
   button.append(element<HTMLTemplateElement>('session-icon').content.cloneNode(true), text);
@@ -197,8 +205,14 @@ async function newTab(): Promise<void> {
     }
   };
   select(tab);
-  try { await view.start(sourceId); }
+  try {
+    await view.start(sourceId, restore?.cwd);
+    publishLayout();
+    // The shell holds typed input until its prompt is ready.
+    if (restore?.resume && view.sessionId) window.terminal.write(view.sessionId, `${resumeCommand(restore.resume)}\r`);
+  }
   catch (error) { if (tabs.includes(tab)) { statusText.textContent = String(error); status.hidden = false; } }
+  return tab;
 }
 function closeTab(tab = active): void {
   if (!tab) return;
@@ -206,6 +220,7 @@ function closeTab(tab = active): void {
   tabs.splice(index, 1); tab.wrapper.remove(); tab.panel.remove();
   if (tab.attention) publishAttention();
   void tab.view.close().catch(report);
+  publishLayout();
   if (active === tab) {
     active = undefined;
     const next = tabs[Math.min(index, tabs.length - 1)];
@@ -294,6 +309,16 @@ window.addEventListener('beforeunload', () => {
   for (const tab of tabs) void tab.view.close();
   window.terminal.setAttentionCount(0);
 });
+async function restoreTabs(): Promise<void> {
+  const restored = await window.terminal.takeRestoredTabs();
+  if (!restored?.tabs.length) { await newTab(); return; }
+  const opened: (Tab | undefined)[] = [];
+  for (const tab of restored.tabs) opened.push(await newTab(tab));
+  const selected = opened[restored.active] ?? opened.findLast(Boolean);
+  if (selected && tabs.includes(selected)) select(selected);
+  const agents = [...new Set(restored.tabs.flatMap(tab => tab.resume ? AGENT_LABELS[tab.resume.agent] : []))];
+  report(`Reopened ${restored.tabs.length} ${restored.tabs.length === 1 ? 'tab' : 'tabs'} after updating${agents.length ? ` and resumed ${agents.join(' and ')} sessions` : ''}.`);
+}
 void window.terminal.getPreferences().then(value => {
   preferences = value;
   attachSidebarResize(element('sidebar'), element('sidebar-resize'), preferences.sidebarWidth, width => {
@@ -301,5 +326,5 @@ void window.terminal.getPreferences().then(value => {
     void window.terminal.savePreferences({ ...preferences }).catch(report);
   });
   applyPreferences();
-  return newTab();
+  return restoreTabs();
 }).catch(report);

@@ -13,7 +13,7 @@ const api: TerminalAPI = {
     return () => { ipcRenderer.removeListener('updates:state', receive); };
   },
   getPathForFile: file => webUtils.getPathForFile(file),
-  create: (size, sourceId) => ipcRenderer.invoke('terminal:create', size, sourceId),
+  create: (size, sourceId, cwd) => ipcRenderer.invoke('terminal:create', size, sourceId, cwd),
   ready: id => ipcRenderer.send('terminal:ready', id),
   write: (id, data, binary = false) => ipcRenderer.send('terminal:write', id, data, binary),
   resize: (id, cols, rows) => ipcRenderer.send('terminal:resize', id, cols, rows),
@@ -40,5 +40,7 @@ const api: TerminalAPI = {
     ipcRenderer.on('attention:activate', receive);
     return () => { ipcRenderer.removeListener('attention:activate', receive); };
   },
+  setLayout: (ids, active) => ipcRenderer.send('session:layout', ids, active),
+  takeRestoredTabs: () => ipcRenderer.invoke('session:take-restore'),
 };
 contextBridge.exposeInMainWorld('terminal', api);

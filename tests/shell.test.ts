@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { agentName, agentOf, buildShellLaunch, descendantsOf, shellCurrentDirectory } from '../src/main/shell.ts';
+import { agentName, agentOf, agentProcessOf, buildShellLaunch, descendantsOf, shellCurrentDirectory, usableDirectory } from '../src/main/shell.ts';
+import { tmpdir } from 'node:os';
 import { realpathSync } from 'node:fs';
 import { defaultPreferences } from '../src/main/preferences.ts';
 
@@ -63,4 +64,11 @@ test('finds an agent below the shell but not in unrelated processes', () => {
   const snapshot = '10 1 -zsh\n11 10 claude\n12 11 node /tmp/x.js\n20 1 -zsh\n21 20 vim\n30 1 codex\n';
   assert.equal(agentOf(10, snapshot), 'Claude');
   assert.equal(agentOf(20, snapshot), undefined);
+  const nested = '10 1 -zsh\n11 10 claude\n12 11 /bin/zsh -c codex\n13 12 codex\n';
+  assert.deepEqual(agentProcessOf(10, nested), { name: 'Claude', pid: 11 }, 'the outermost agent wins');
+});
+
+test('accepts only absolute, readable directories', () => {
+  assert.equal(usableDirectory(tmpdir()), true);
+  for (const value of ['relative', '/definitely/missing', '/etc/hosts', `${tmpdir()}\n`, 42, undefined]) assert.equal(usableDirectory(value), false, String(value));
 });

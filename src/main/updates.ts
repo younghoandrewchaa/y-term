@@ -45,6 +45,10 @@ interface UpdateOptions {
   fetchRelease(): Promise<unknown>;
   confirm(): Promise<boolean>;
   publish(state: UpdateState): void;
+  /** Runs just before quitting to install; failures must not block the update. */
+  beforeRestart?(version: string): void;
+  /** Undoes `beforeRestart` when the restart could not begin. */
+  restartFailed?(): void;
   now?: () => number;
 }
 
@@ -114,7 +118,12 @@ export class UpdateManager {
 
   private restart(): void {
     this.setState('installing');
+    try { if (this.candidate) this.options.beforeRestart?.(this.candidate.version); }
+    catch (error) { console.error('Could not save tabs before restarting:', error); }
     try { this.options.native.quitAndInstall(); }
-    catch { this.setState('error', 'Could not restart. Try again.'); }
+    catch {
+      try { this.options.restartFailed?.(); } catch { /* Best effort; the version check also ignores stale tabs. */ }
+      this.setState('error', 'Could not restart. Try again.');
+    }
   }
 }

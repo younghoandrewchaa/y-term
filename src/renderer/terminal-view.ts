@@ -102,11 +102,11 @@ export class TerminalView {
     this.observer.observe(host);
   }
   get sessionId(): string | undefined { return this.session.id; }
-  async start(sourceId?: string): Promise<void> {
+  async start(sourceId?: string, cwd?: string): Promise<void> {
     await document.fonts.ready;
     if (this.disposed) return;
     this.fit();
-    await this.session.start({ cols: this.terminal.cols, rows: this.terminal.rows }, sourceId);
+    await this.session.start({ cols: this.terminal.cols, rows: this.terminal.rows }, sourceId, cwd);
     if (!this.disposed) this.host.closest('[role=tabpanel]')?.setAttribute('data-ready', 'true');
   }
   fit(): void {

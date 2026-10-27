@@ -21,7 +21,7 @@ npm start
 
 Sessions appear in the left sidebar, with Settings at the bottom. The header shows the active shell title and its configured starting directory. Use Up/Down or Home/End while a session button has focus to switch sessions.
 
-The bottom of the sidebar shows the installed app version. Signed Apple Silicon releases check GitHub for a newer stable release on startup and when a new tab opens, at most once every five minutes. If one is available, click **Update**, then confirm **Update and Restart**. The app downloads the signed update, installs it, and restarts automatically. All terminal sessions and running commands end on restart; save your work before confirming. Failed checks and downloads offer a retry. Development builds and automated tests do not check or install updates.
+The bottom of the sidebar shows the installed app version. Signed Apple Silicon releases check GitHub for a newer stable release on startup and when a new tab opens, at most once every five minutes. If one is available, click **Update**, then confirm **Update and Restart**. The app downloads the signed update, installs it, and restarts automatically. After the restart, Y-Term reopens your windows and tabs in the same order, each in its last working directory. Tabs running Claude Code or Codex resume that agent's conversation (`claude --resume` or `codex resume`) with its default options. Other running commands end on restart; save your work before confirming. Tabs are restored only after an update, not after a normal quit. Failed checks and downloads offer a retry. Development builds and automated tests do not check or install updates.
 
 Drag the sidebar’s right edge to resize it; the app remembers your width across restarts. Double-click the edge to reset it. You can also focus the divider with Tab and use Left/Right to resize, or Home/End for the minimum/maximum width.
 
@@ -50,6 +50,7 @@ npm run typecheck
 npm run test:pty
 npm run test:e2e
 npm run test:updates
+npm run test:restore
 npm run package
 npm run test:packaged
 npm run make

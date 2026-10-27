@@ -1,3 +1,4 @@
+import type { AgentResume } from './agent-resume.ts';
 import type { UpdateState } from './update-protocol.ts';
 
 export interface Disposable { dispose(): void }
@@ -29,6 +30,9 @@ export interface Preferences {
   sidebarWidth?: number;
   bounds?: WindowBounds;
 }
+export interface RestoredTab { cwd?: string; resume?: AgentResume }
+/** Tabs for one window after an update restart, in sidebar order. */
+export interface RestoredTabs { tabs: RestoredTab[]; active: number }
 export type MenuAction = 'new-tab' | 'close-tab' | 'find' | 'settings' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'clear' | 'next-tab' | 'previous-tab' | 'toggle-sidebar';
 export interface TerminalAPI {
   getUpdateState(): Promise<UpdateState>;
@@ -36,7 +40,8 @@ export interface TerminalAPI {
   installUpdate(): Promise<void>;
   onUpdateState(listener: (state: UpdateState) => void): () => void;
   getPathForFile(file: File): string;
-  create(size: Dimensions, sourceId?: string): Promise<string>;
+  /** Starts in `sourceId`'s live directory, otherwise in `cwd` when it is usable. */
+  create(size: Dimensions, sourceId?: string, cwd?: string): Promise<string>;
   ready(id: string): void;
   write(id: string, data: string, binary?: boolean): void;
   resize(id: string, cols: number, rows: number): void;
@@ -52,6 +57,10 @@ export interface TerminalAPI {
   setAttentionCount(count: number): void;
   notifyAttention(tab: string, title: string, body: string): void;
   onAttentionActivate(listener: (tab: string) => void): () => void;
+  /** Reports sidebar order so an update restart can reopen tabs in the same order. */
+  setLayout(ids: string[], active?: string): void;
+  /** Returns this window's tabs saved before an update restart, once. */
+  takeRestoredTabs(): Promise<RestoredTabs | undefined>;
 }
 
 declare global { interface Window { terminal: TerminalAPI } }
