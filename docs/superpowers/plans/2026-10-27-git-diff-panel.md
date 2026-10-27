@@ -1,6 +1,6 @@
 # Git Diff Panel Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Review the active terminal's local Git changes in a read-only panel with aligned side-by-side diff hunks.
 
@@ -57,12 +57,12 @@
 - `GitDiffResult` is `{ kind: 'patch'; root: string; entry: GitEntry; patch: string }`, `{ kind: 'untracked'; root: string; entry: GitEntry; content: string }`, or `{ kind: 'summary'; reason: 'binary' | 'too-large' | 'unsupported-encoding' | 'conflict' | 'submodule' | 'metadata-only' | 'stale' | 'error'; message: string }`.
 - `GitService.status(owner: number, cwd: string): Promise<GitStatusResult>` and `GitService.diff(owner: number, cwd: string, section: GitSection, path: string): Promise<GitDiffResult>`; `disposeOwner(owner: number): void` cancels its subprocesses. Service re-enumerates status to authorize selected paths; the caller owns session authorization.
 
-- [ ] Write temporary-repository tests using the actual installed Git: clean/non-repository, nested directory, linked worktree, unborn HEAD, tracked add/modify/delete, staged rename, partial staging, untracked text, conflict, and binary. Assert the staged patch includes only staged edits and the unstaged patch includes only subsequent edits.
-- [ ] Add exact-path fixtures with whitespace, newline, leading dash, and `[]*:(...)` characters. Assert selected-file requests never return another file. Cover rename NUL record ordering, symlinks, invalid UTF-8 content and filenames, metadata-only changes, timeout, and output limits. Inject the process boundary only for failures difficult to trigger deterministically.
-- [ ] Run `node --experimental-strip-types --test tests/git.test.ts`; verify new behavior fails before implementation.
-- [ ] Implement argument-array subprocesses, NUL status parsing, explicit result states, and bounded untracked reads. Use Git global literal pathspecs; force patch output with three context lines, no color, external diff, textconv, or user-supplied custom diff formatting. Use `--cached` for staged reads without hardcoding `HEAD` on unborn repositories. Show unsupported file summaries rather than parsing combined merge patches. Never follow untracked symlinks.
-- [ ] Apply the design's resource limits, runtime validation, read-only environment/config, and owner cleanup. Preserve tracked rename metadata; parse per-file hunks without extracting paths from quoted patch headers.
-- [ ] Run the Git tests and `npm run typecheck`; expect exit 0. Commit only this task's files with `feat: add bounded Git change reads`.
+- [x] Write temporary-repository tests using the actual installed Git: clean/non-repository, nested directory, linked worktree, unborn HEAD, tracked add/modify/delete, staged rename, partial staging, untracked text, conflict, and binary. Assert the staged patch includes only staged edits and the unstaged patch includes only subsequent edits.
+- [x] Add exact-path fixtures with whitespace, newline, leading dash, and `[]*:(...)` characters. Assert selected-file requests never return another file. Cover rename NUL record ordering, symlinks, invalid UTF-8 content and filenames, metadata-only changes, timeout, and output limits. Inject the process boundary only for failures difficult to trigger deterministically.
+- [x] Run `node --experimental-strip-types --test tests/git.test.ts`; verify new behavior fails before implementation.
+- [x] Implement argument-array subprocesses, NUL status parsing, explicit result states, and bounded untracked reads. Use Git global literal pathspecs; force patch output with three context lines, no color, external diff, textconv, or user-supplied custom diff formatting. Use `--cached` for staged reads without hardcoding `HEAD` on unborn repositories. Show unsupported file summaries rather than parsing combined merge patches. Never follow untracked symlinks.
+- [x] Apply the design's resource limits, runtime validation, read-only environment/config, and owner cleanup. Preserve tracked rename metadata; parse per-file hunks without extracting paths from quoted patch headers.
+- [x] Run the Git tests and `npm run typecheck`; expect exit 0. Commit only this task's files with `feat: add bounded Git change reads`.
 
 ## Task 2: Session-scoped IPC
 
@@ -70,16 +70,16 @@
 
 **Interfaces:**
 
-- Add `SessionManager.directoryFor(owner: number, id: string): string | undefined`; authorize with `owned`, reject ended sessions, and query the live process directory rather than a renderer cache.
+- Add `SessionManager.directoryFor(owner: number, id: string): Promise<string | undefined>`; authorize with `owned`, reject ended sessions, and query the live process directory asynchronously rather than using a renderer cache. Recheck ownership/liveness after the read.
 - Add `TerminalAPI.getGitStatus(id: string): Promise<GitStatusResult>` and `getGitDiff(id: string, section: GitSection, path: string): Promise<GitDiffResult>` mapped to `git:status` and `git:diff`.
 - Pass a `GitService` instance to `registerTerminalIpc`; create it at startup and dispose its owner on window destruction and renderer-process loss.
 
-- [ ] Add failing tests asserting foreign/closed session IDs are rejected, an exited shell cannot be read, and a fresh process directory wins over previously emitted directory events.
-- [ ] Run `node --experimental-strip-types --test tests/session-manager.test.ts`; confirm failure for the missing directory interface.
-- [ ] Implement the directory method and two handlers using existing trusted-frame validation. Validate argument types and section before Git execution. If live directory is unavailable, return the explicit unavailable state; do not guess a repository from preferences.
-- [ ] Capture the directory at request start and recheck session ownership and directory before returning. A changed directory produces a stale diff summary or directory-unavailable status so the UI reloads; stale results never leak into another tab.
-- [ ] Expose only the typed methods through preload; preserve existing APIs. Add a smoke assertion in Task 5 for foreign-window rejection and malformed arguments.
-- [ ] Run session and Git tests plus typecheck; expect exit 0. Commit with `feat: expose session-scoped Git reads`.
+- [x] Add failing tests asserting foreign/closed session IDs are rejected, an exited shell cannot be read, and a fresh process directory wins over previously emitted directory events.
+- [x] Run `node --experimental-strip-types --test tests/session-manager.test.ts`; confirm failure for the missing directory interface.
+- [x] Implement the directory method and two handlers using existing trusted-frame validation. Validate argument types and section before Git execution. If live directory is unavailable, return the explicit unavailable state; do not guess a repository from preferences.
+- [x] Capture the directory at request start and recheck session ownership and directory before returning. A changed directory produces a stale diff summary or directory-unavailable status so the UI reloads; stale results never leak into another tab.
+- [x] Expose only the typed methods through preload; preserve existing APIs. Add a smoke assertion in Task 5 for foreign-window rejection and malformed arguments.
+- [x] Run session and Git tests plus typecheck; expect exit 0. Commit with `feat: expose session-scoped Git reads`.
 
 ## Task 3: Patch-to-row model
 
@@ -90,11 +90,11 @@
 - Export `DiffRow { kind: 'context' | 'change' | 'hunk' | 'notice'; left?: { number?: number; text: string }; right?: { number?: number; text: string } }`.
 - Export `buildDiffRows(diff: GitDiffResult): DiffRow[]`. Non-text results produce a notice; excessive rows produce a single size-limit notice without silently dropping content.
 
-- [ ] Write failing tests with literal small patches: context on both sides, replacement blocks of unequal lengths, insertion-only/deletion-only hunks, multiple hunks, zero-count ranges, empty files, CRLF, and final-newline markers. Assert exact line numbers and blank cells.
-- [ ] Add tests for untracked additions, malformed/combined patches, binary summaries, and more than 10,000 resulting rows. Assert source resembling HTML remains ordinary row text.
-- [ ] Run `node --experimental-strip-types --test tests/git-diff.test.ts`; confirm missing-model failure.
-- [ ] Implement unified-hunk parsing. For each contiguous edit block, pair removals and additions by index and pad the shorter side; do not claim semantic word alignment. Use hunk headers to reset each side's line numbers. Keep missing-final-newline annotations outside numbered source lines.
-- [ ] Run model tests and typecheck; expect exit 0. Commit with `feat: align Git patch hunks for side-by-side review`.
+- [x] Write failing tests with literal small patches: context on both sides, replacement blocks of unequal lengths, insertion-only/deletion-only hunks, multiple hunks, zero-count ranges, empty files, CRLF, and final-newline markers. Assert exact line numbers and blank cells.
+- [x] Add tests for untracked additions, malformed/combined patches, binary summaries, and more than 10,000 resulting rows. Assert source resembling HTML remains ordinary row text.
+- [x] Run `node --experimental-strip-types --test tests/git-diff.test.ts`; confirm missing-model failure.
+- [x] Implement unified-hunk parsing. For each contiguous edit block, pair removals and additions by index and pad the shorter side; do not claim semantic word alignment. Use hunk headers to reset each side's line numbers. Keep missing-final-newline annotations outside numbered source lines.
+- [x] Run model tests and typecheck; expect exit 0. Commit with `feat: align Git patch hunks for side-by-side review`.
 
 ## Task 4: Panel UI and refresh lifecycle
 
@@ -106,13 +106,13 @@
 - Keep timing/request sequencing in a DOM-independent exported `GitPanelController` in the same module, with injected API, clock/scheduler, and state-change callback. Define its state types locally; the DOM component consumes them. Tests exercise real controller decisions with deferred API responses and a controlled clock.
 - Add `toggle-changes` to `MenuAction`, button `#changes-toggle`, host `#git-panel`, and the View menu shortcut `CmdOrCtrl+Shift+G`.
 
-- [ ] Write failing controller tests for initial load, staged/unstaged selection, unchanged status with changed selected content, a stale file, and refresh coalescing. Assert late responses after rapid file/tab/directory switches never replace the current view. Assert polling stops on hidden/unfocused/disposed states and resumes on focus.
-- [ ] Run `node --experimental-strip-types --test tests/git-panel.test.ts`; confirm missing-controller failure.
-- [ ] Implement controller sequencing and the design's refresh triggers. Keep one cycle in flight; coalesce pending triggers, invalidate generations immediately on context changes, and schedule the next poll after completion. Main limits still bound obsolete subprocess work. Retain selection/scroll only for matching section, root, path, and unchanged content.
-- [ ] Implement the Changes toolbar, file list, result states, aligned rows, comparison labels, shared scrolling, divider, expand/restore, keyboard selection, and focus restoration. Insert all repository strings with `textContent`. Render summary metadata when no text hunk exists. Use accessible names, selected states, and a restrained live status region.
-- [ ] Apply the design's 1100/720/320/180/640-pixel layout rules and existing dark/light variables. Mark header controls as non-draggable. Preserve hidden terminal instances; use their existing ResizeObserver/fit behavior when layout changes.
-- [ ] Wire active tab selection, successful session startup, directory callbacks, closing the active tab, window focus, beforeunload cleanup, preferences, and menu actions in `app.ts`. Leave terminal find shortcuts intact; do not send panel navigation keys to the PTY.
-- [ ] Run controller/model tests and typecheck; expect exit 0. Commit with `feat: add the Git changes review panel`.
+- [x] Write failing controller tests for initial load, staged/unstaged selection, unchanged status with changed selected content, a stale file, and refresh coalescing. Assert late responses after rapid file/tab/directory switches never replace the current view. Assert polling stops on hidden/unfocused/disposed states and resumes on focus.
+- [x] Run `node --experimental-strip-types --test tests/git-panel.test.ts`; confirm missing-controller failure.
+- [x] Implement controller sequencing and the design's refresh triggers. Keep one cycle in flight; coalesce pending triggers, invalidate generations immediately on context changes, and schedule the next poll after completion. Main limits still bound obsolete subprocess work. Retain selection/scroll only for matching section, root, path, and unchanged content.
+- [x] Implement the Changes toolbar, file list, result states, aligned rows, comparison labels, shared scrolling, divider, expand/restore, keyboard selection, and focus restoration. Insert all repository strings with `textContent`. Render summary metadata when no text hunk exists. Use accessible names, selected states, and a restrained live status region.
+- [x] Apply the design's 1100/720/320/180/640-pixel layout rules and existing dark/light variables. Mark header controls as non-draggable. Preserve hidden terminal instances; use their existing ResizeObserver/fit behavior when layout changes.
+- [x] Wire active tab selection, successful session startup, directory callbacks, closing the active tab, window focus, beforeunload cleanup, preferences, and menu actions in `app.ts`. Leave terminal find shortcuts intact; do not send panel navigation keys to the PTY.
+- [x] Run controller/model tests and typecheck; expect exit 0. Commit with `feat: add the Git changes review panel`.
 
 ## Task 5: Real-app acceptance and documentation
 
@@ -120,13 +120,13 @@
 
 **Interfaces:** Add `test:git` script: `npm run build && node --experimental-strip-types scripts/git-smoke.ts`. Follow existing Electron smoke-test isolation through `Y_TERM_TEST_DATA`.
 
-- [ ] Create a temporary repository and isolated app preferences pointing at it. Include two changed files, a partially staged file, an untracked file, binary data, and a large-file summary case. Test using the real Git service, not replacement IPC results.
-- [ ] Verify opening via button and shortcut, selecting both motivating file paths, staged/unstaged contents, line alignment and numbers, refresh after an edit with unchanged status codes, and clean-state recovery after changes disappear.
-- [ ] Verify switching repositories and `cd` while the panel is open, closing the active tab, two-window session ownership, malformed IPC input, and loading/error summaries. Confirm code resembling HTML appears as text and causes no DOM execution.
-- [ ] Verify both themes and 640-, 1000-, and 1440-pixel windows. Exercise divider keyboard/pointer input, expand/restore, code copy, Escape, settings-modal precedence, and live terminal input after each layout transition. Save screenshots for visual review and inspect them before declaring completion.
-- [ ] Document the Changes control, shortcut, comparison semantics, refresh behavior, limits, system Git requirement, and read-only scope in README.
-- [ ] Run `npm test`, `npm run typecheck`, `npm run test:git`, existing `npm run test:e2e`, and `git diff --check`. All must exit 0; report any failure by name. `test:git` and `test:e2e` each build, so run GUI suites sequentially.
-- [ ] Review the complete diff against the acceptance criteria. Confirm no repository mutation commands or unrelated changes were introduced. Commit with `test: verify Git panel workflows and document usage`.
+- [x] Create a temporary repository and isolated app preferences pointing at it. Include two changed files, a partially staged file, an untracked file, binary data, and a large-file summary case. Test using the real Git service, not replacement IPC results.
+- [x] Verify opening via button and shortcut, selecting both motivating file paths, staged/unstaged contents, line alignment and numbers, refresh after an edit with unchanged status codes, and clean-state recovery after changes disappear.
+- [x] Verify switching repositories and `cd` while the panel is open, closing the active tab, two-window session ownership, malformed IPC input, and loading/error summaries. Confirm code resembling HTML appears as text and causes no DOM execution.
+- [x] Verify both themes and 640-, 1000-, and 1440-pixel windows. Exercise divider keyboard/pointer input, expand/restore, code copy, Escape, settings-modal precedence, and live terminal input after each layout transition. Save screenshots for visual review and inspect them before declaring completion.
+- [x] Document the Changes control, shortcut, comparison semantics, refresh behavior, limits, system Git requirement, and read-only scope in README.
+- [x] Run `npm test`, `npm run typecheck`, `npm run test:git`, existing `npm run test:e2e`, and `git diff --check`. All must exit 0; report any failure by name. `test:git` and `test:e2e` each build, so run GUI suites sequentially.
+- [x] Review the complete diff against the acceptance criteria. Confirm no repository mutation commands or unrelated changes were introduced. Commit with `test: verify Git panel workflows and document usage`.
 
 ## Delivery and deferred work
 
@@ -134,4 +134,13 @@ Deliver a working read-only panel plus test evidence and screenshots. Keep stagi
 
 ## Plan review
 
-Self-reviewed against the proposed design: each requirement maps to the five tasks; resource limits and uncommon path cases have explicit tests; interface names match across main, preload, and renderer. Proposed scope and layout still need user review before implementation. Native execution is recommended because the tasks share a small set of sequential data contracts.
+Self-reviewed against the design: each requirement maps to the five tasks; resource limits and uncommon path cases have explicit tests; interface names match across main, preload, and renderer. The user approved implementation on 2026-10-27; executed sequentially in this session.
+
+## Verification results
+
+- 92 unit tests, TypeScript checks, build, and `git diff --check` passed.
+- `npm run test:git` passed with real Git repositories and Electron windows, including native code copying, both themes, 640/1000/1440-pixel windows, expand/restore, divider input, Find/modal precedence, tab/directory changes, clean/non-repository/exited-session states, and foreign-window rejection. Screenshots were inspected in `/private/tmp/y-term-git-screenshots`.
+- Existing `npm run test:e2e` timed out in default-shell output waits at `visual-smoke.ts:35` and `smoke.ts:34`. The unchanged baseline `c6c22b4` also timed out at `smoke.ts:34` in a separate temporary checkout. The complete existing suite passed with `SHELL=/bin/bash npm run test:e2e`; no unrelated shell behavior was changed.
+- Added a strict Git directory lookup alongside the existing cached file-link lookup to preserve file-link behavior. Used a new feature branch in the existing clean checkout.
+- Independent review found three important issues: blank context lines affected by user Git configuration, leading-BOM filename corruption, and synchronous recurring directory probes. Each received a failing regression test and a verified fix. Git directory checks now use the asynchronous process lookup with ownership/liveness rechecks. No critical or minor findings remained.
+- After the review fixes, 92 unit tests, typecheck, build, and the Git UI smoke passed. The final Bash terminal smoke run passed too. An earlier Bash run failed the minimum-size assertion in `visual-smoke.ts:79` and its cleanup waited at the isolated test app's quit prompt. A diagnostic rerun passed the same assertion and full suite; the inspected minimum-size screenshot was correct. Temporary diagnostic edits were removed; no product layout adjustment was made for this intermittent result.

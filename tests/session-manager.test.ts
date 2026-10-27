@@ -3,6 +3,39 @@ import assert from 'node:assert/strict';
 import { SessionManager } from '../src/main/session-manager.ts';
 import type { PtyProcess, TerminalEvent } from '../src/shared/terminal-protocol.ts';
 
+test('Git directory reads require an owned live session and never fall back to a cached directory', async () => {
+  const pty = new FakePty();
+  let cwd: string | undefined = '/first';
+  const manager = new SessionManager(() => pty, () => {}, () => {}, () => cwd);
+  const id = manager.create(1, { cols: 80, rows: 24 });
+  assert.equal(await manager.directoryFor(1, id), '/first');
+  cwd = '/after-cd';
+  assert.equal(await manager.directoryFor(1, id), '/after-cd');
+  cwd = undefined;
+  assert.equal(await manager.directoryFor(1, id), undefined);
+  await assert.rejects(async () => manager.directoryFor(2, id), /session/i);
+  pty.exit({ exitCode: 0 }); cwd = '/reused-pid';
+  await assert.rejects(async () => manager.directoryFor(1, id), /exited/i);
+  manager.close(1, id);
+  await assert.rejects(async () => manager.directoryFor(1, id), /session/i);
+});
+
+test('Git directory lookup yields while reading and rejects results after session closure', async () => {
+  const pty = new FakePty();
+  let resolve!: (cwd: string | undefined) => void;
+  const manager = new SessionManager(() => pty, () => {}, () => {}, () => { throw new Error('Synchronous lookup must not run'); },
+    () => new Promise<string | undefined>(done => { resolve = done; }));
+  const id = manager.create(1, { cols: 80, rows: 24 });
+  const first = manager.directoryFor(1, id);
+  await Promise.resolve();
+  manager.write(1, id, 'still responsive', false);
+  assert.deepEqual(pty.writes, ['still responsive']);
+  resolve('/live'); assert.equal(await first, '/live');
+  const late = manager.directoryFor(1, id);
+  manager.close(1, id); resolve('/stale');
+  await assert.rejects(async () => late, /session/i);
+});
+
 test('file links use the owned session live directory and retain it after exit', async () => {
   const pty = new FakePty();
   let cwd: string | undefined = '/first';

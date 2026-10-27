@@ -10,6 +10,7 @@ import { buildShellLaunch, runningAgentsAsync, shellCurrentDirectory, shellCurre
 import { registerTerminalIpc } from './terminal-ipc.ts';
 import type { MenuAction } from '../shared/terminal-protocol.ts';
 import { UpdateManager, releaseApiUrl } from './updates.ts';
+import { GitService } from './git.ts';
 
 // An isolated data directory also makes automated smoke tests non-destructive.
 if (process.env.Y_TERM_TEST_DATA) app.setPath('userData', process.env.Y_TERM_TEST_DATA);
@@ -21,6 +22,7 @@ let preferences: PreferencesStore;
 let manager: SessionManager;
 let updates: UpdateManager;
 const attention = new AttentionBadge(text => app.dock?.setBadge(text));
+const git = new GitService();
 // Electron drops click handlers of notifications that are garbage collected.
 const notifications = new Set<Notification>();
 
@@ -66,14 +68,15 @@ function createWindow(): void {
   window.webContents.on('will-attach-webview', event => event.preventDefault());
   window.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   window.webContents.session.setPermissionCheckHandler(() => false);
-  window.webContents.on('render-process-gone', () => { manager.closeOwner(owner); attention.clear(owner); });
+  window.webContents.on('render-process-gone', () => { manager.closeOwner(owner); attention.clear(owner); git.disposeOwner(owner); });
   window.on('close', () => {
     try { preferences.save({ ...preferences.get(), bounds: window.getNormalBounds() }); }
     catch (error) { console.error('Could not save window bounds:', error); }
     manager.closeOwner(owner);
     attention.clear(owner);
+    git.disposeOwner(owner);
   });
-  window.webContents.on('destroyed', () => { manager.closeOwner(owner); attention.clear(owner); });
+  window.webContents.on('destroyed', () => { manager.closeOwner(owner); attention.clear(owner); git.disposeOwner(owner); });
   window.once('ready-to-show', () => window.show());
   void window.loadURL(documentUrl).catch(error => dialog.showErrorBox('Y-Term could not open', String(error)));
 }
@@ -92,7 +95,7 @@ function setMenu(): void {
       { type: 'separator' }, action('Clear Display', 'CmdOrCtrl+K', 'clear'),
     ] },
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }, { type: 'separator' }, action('Find…', 'CmdOrCtrl+F', 'find')] },
-    { label: 'View', submenu: [action('Increase Font Size', 'CmdOrCtrl+Plus', 'zoom-in'), action('Decrease Font Size', 'CmdOrCtrl+-', 'zoom-out'), action('Reset Font Size', 'CmdOrCtrl+0', 'zoom-reset'), { type: 'separator' }, { role: 'togglefullscreen' }] },
+    { label: 'View', submenu: [action('Toggle Changes', 'CmdOrCtrl+Shift+G', 'toggle-changes'), { type: 'separator' }, action('Increase Font Size', 'CmdOrCtrl+Plus', 'zoom-in'), action('Decrease Font Size', 'CmdOrCtrl+-', 'zoom-out'), action('Reset Font Size', 'CmdOrCtrl+0', 'zoom-reset'), { type: 'separator' }, { role: 'togglefullscreen' }] },
     { label: 'Window', submenu: [
       { role: 'minimize' }, { role: 'zoom' }, { type: 'separator' },
       action('Next Tab', 'Ctrl+Tab', 'next-tab'),
@@ -113,7 +116,7 @@ void app.whenReady().then(() => {
   }, (owner, event) => {
     const contents = webContents.fromId(owner);
     if (contents && !contents.isDestroyed()) contents.send('terminal:event', event);
-  }, terminatePty, shellCurrentDirectory);
+  }, terminatePty, shellCurrentDirectory, shellCurrentDirectoryAsync);
   updates = new UpdateManager({
     version: app.getVersion(),
     enabled: app.isPackaged && process.platform === 'darwin' && process.arch === 'arm64' && !process.env.Y_TERM_TEST_DATA,
@@ -141,7 +144,7 @@ void app.whenReady().then(() => {
       for (const window of BrowserWindow.getAllWindows()) window.webContents.send('updates:state', state);
     },
   });
-  registerTerminalIpc(manager, preferences, documentUrl, updates, attention, notifyAttention);
+  registerTerminalIpc(manager, preferences, documentUrl, updates, attention, notifyAttention, git);
   void updates.check();
   // Schedule after completion so slow lookups never accumulate overlapping polls.
   const refreshDirectories = async () => {

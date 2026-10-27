@@ -2,6 +2,7 @@ import '@xterm/xterm/css/xterm.css';
 import './styles.css';
 import { TerminalView } from './terminal-view.ts';
 import { attachSidebarResize } from './sidebar-resize.ts';
+import { GitPanel } from './git-panel.ts';
 import type { AttentionSignal } from '../shared/attention.ts';
 import type { MenuAction, Preferences } from '../shared/terminal-protocol.ts';
 import type { UpdateState } from '../shared/update-protocol.ts';
@@ -28,6 +29,7 @@ const tabs: Tab[] = [];
 let active: Tab | undefined;
 let preferences: Preferences;
 let counter = 0;
+const gitPanel = new GitPanel(element('git-panel'), window.terminal, () => active?.view.focus());
 
 let updateState: UpdateState | undefined;
 let upToDate = false;
@@ -132,6 +134,7 @@ function clearAttention(tab: Tab): void {
 }
 function select(tab: Tab): void {
   active = tab;
+  gitPanel.setSession(tab.view.sessionId);
   clearAttention(tab);
   for (const item of tabs) {
     const selected = item === tab;
@@ -174,7 +177,7 @@ async function newTab(): Promise<void> {
     tab.cwd = cwd;
     directory.textContent = directoryName(cwd);
     groupTabs();
-    if (active === tab) updateHeader();
+    if (active === tab) { updateHeader(); gitPanel.directoryChanged(); }
   }, agent => {
     tab.agent = agent;
     const icon = element<HTMLTemplateElement>(agent ? 'agent-icon' : 'session-icon').content.cloneNode(true) as DocumentFragment;
@@ -197,7 +200,7 @@ async function newTab(): Promise<void> {
     }
   };
   select(tab);
-  try { await view.start(sourceId); }
+  try { await view.start(sourceId); if (active === tab) gitPanel.setSession(view.sessionId); }
   catch (error) { if (tabs.includes(tab)) { statusText.textContent = String(error); status.hidden = false; } }
 }
 function closeTab(tab = active): void {
@@ -211,6 +214,7 @@ function closeTab(tab = active): void {
     const next = tabs[Math.min(index, tabs.length - 1)];
     if (next) select(next);
     else {
+      gitPanel.setSession(undefined);
       report('No open shells. Press ⌘T to start a new session.');
       element('empty-state').hidden = false;
       element('empty-new-tab').focus();
@@ -223,6 +227,8 @@ function cycle(direction: number): void {
 }
 function applyPreferences(): void {
   document.documentElement.dataset.theme = preferences.theme;
+  document.documentElement.style.setProperty('--git-font-family', preferences.fontFamily);
+  document.documentElement.style.setProperty('--git-font-size', `${preferences.fontSize}px`);
   for (const tab of tabs) { tab.view.apply(preferences); tab.view.fit(); }
 }
 function openSettings(): void {
@@ -242,18 +248,23 @@ function action(command: MenuAction): void {
   // App menus can fire while a modal owns focus; keep actions inside the dialog.
   if (document.querySelector('dialog[open]')) return;
   if (command === 'new-tab') void newTab().catch(report);
+  else if (command === 'toggle-changes') gitPanel.toggle();
   else if (command === 'close-tab') closeTab();
   else if (command === 'settings') openSettings();
   else if (command === 'next-tab') cycle(1);
   else if (command === 'previous-tab') cycle(-1);
   else if (command === 'clear') active?.view.terminal.clear();
-  else if (command === 'find') { findBar.hidden = false; findInput.focus(); findInput.select(); }
+  else if (command === 'find') {
+    if (!element('git-panel').hidden) gitPanel.toggle();
+    findBar.hidden = false; findInput.focus(); findInput.select();
+  }
   else if (command.startsWith('zoom-')) {
     const fontSize = command === 'zoom-reset' ? 14 : Math.max(9, Math.min(36, preferences.fontSize + (command === 'zoom-in' ? 1 : -1)));
     void window.terminal.savePreferences({ ...preferences, fontSize }).then(saved => { preferences = saved; applyPreferences(); }).catch(report);
   }
 }
 element('new-tab').onclick = () => { void newTab().catch(report); };
+element('changes-toggle').onclick = () => gitPanel.toggle();
 element('empty-new-tab').onclick = () => { void newTab().catch(report); };
 element('settings-open').onclick = openSettings;
 element('settings-cancel').onclick = () => settings.close();
@@ -281,6 +292,7 @@ window.terminal.onAttentionActivate(id => {
 });
 window.addEventListener('focus', () => { if (active) clearAttention(active); });
 window.addEventListener('beforeunload', () => {
+  gitPanel.dispose();
   for (const tab of tabs) void tab.view.close();
   window.terminal.setAttentionCount(0);
 });

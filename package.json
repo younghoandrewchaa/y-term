@@ -24,6 +24,7 @@
     "test:e2e": "npm run build && node --experimental-strip-types scripts/smoke.ts",
     "test:quit": "npm run build && node --experimental-strip-types scripts/quit-smoke.ts",
     "test:updates": "npm run build && node --experimental-strip-types scripts/update-smoke.ts",
+    "test:git": "npm run build && node --experimental-strip-types scripts/git-smoke.ts",
     "rebuild": "electron-rebuild --force --only node-pty",
     "postinstall": "npm run rebuild",
     "test:packaged": "Y_TERM_EXECUTABLE=\"out/Y-Term-darwin-arm64/Y-Term.app/Contents/MacOS/Y-Term\" node --experimental-strip-types scripts/smoke.ts",

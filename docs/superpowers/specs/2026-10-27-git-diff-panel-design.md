@@ -1,6 +1,6 @@
 # Git diff panel design
 
-Status: proposed design accompanying the requested implementation plan. The defaults below are recommendations, not previously approved requirements.
+Status: approved for implementation by the user on 2026-10-27; implemented on `feat/git-diff-panel`.
 
 ## Intent and scope
 
@@ -14,7 +14,7 @@ The first version is read-only. Include unstaged tracked changes, staged changes
 2. **Embedded editor diff component.** Provides richer navigation and full-file comparison but adds a substantial dependency, build integration, and editor lifecycle. Reconsider if editing or full-file browsing becomes a requirement.
 3. **Terminal viewer integration.** Launching delta is useful independently, but introduces an external installation and does not produce the requested clickable application panel.
 
-This draft proceeds with approach 1 for review. Implementation starts after the proposed scope and design are accepted.
+The implementation uses approach 1, following the user's approval of the implementation plan.
 
 ## Interaction and layout
 

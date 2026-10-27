@@ -39,6 +39,7 @@
   <header class="session-header">
     <span id="active-title">Y-Term</span>
     <span id="active-directory" title="Starting directory"></span>
+    <button id="changes-toggle" aria-controls="git-panel" aria-expanded="false" title="Toggle Changes (⌘⇧G)">Changes</button>
     <span class="session-connection"><span class="connection-dot" aria-hidden="true"></span><span id="active-shell">Local</span></span>
   </header>
   <aside id="find-bar" hidden>
@@ -48,6 +49,7 @@
     <span id="find-status" role="status"></span>
     <button id="find-close" aria-label="Close search">×</button>
   </aside>
+  <div id="workspace-content">
   <main id="panels">
     <section id="empty-state" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 7 5 5-5 5M13 17h6"/></svg>
@@ -56,6 +58,30 @@
       <button id="empty-new-tab">New session <kbd>⌘T</kbd></button>
     </section>
   </main>
+  <aside id="git-panel" aria-label="Git changes" hidden>
+    <div id="git-divider" role="separator" tabindex="0" aria-label="Resize changes panel" aria-orientation="vertical"></div>
+    <div class="git-toolbar">
+      <strong id="git-repository">Changes</strong>
+      <button id="git-refresh" aria-label="Refresh changes" title="Refresh changes">↻</button>
+      <button id="git-expand">Expand</button>
+      <button id="git-close" aria-label="Close changes" title="Close changes (Escape)">×</button>
+    </div>
+    <div class="git-section-controls" role="group" aria-label="Change comparison">
+      <button id="git-unstaged" aria-pressed="true">Unstaged 0</button>
+      <button id="git-staged" aria-pressed="false">Staged 0</button>
+    </div>
+    <div id="git-message" role="status">Open a terminal session to view changes.</div>
+    <div class="git-panel-body">
+      <div class="git-review-surface">
+        <nav class="git-file-nav" aria-label="Changed files"><ul id="git-files"></ul></nav>
+        <section class="git-comparison" aria-label="Side-by-side diff">
+          <div id="git-file-title">Select a file to compare</div>
+          <div id="git-diff" tabindex="0" aria-label="Diff content"><div id="git-diff-table"></div></div>
+        </section>
+      </div>
+    </div>
+  </aside>
+  </div>
   <footer><span id="message" role="status">⌘T new session · ⌘F find · ⌘-click opens links</span><span class="footer-brand">Y-Term</span></footer>
   </div>
   <template id="session-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 7 5 5-5 5M13 17h6"/></svg></template>
