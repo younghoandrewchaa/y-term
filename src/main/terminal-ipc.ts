@@ -6,6 +6,8 @@ import type { PreferencesStore } from './preferences.ts';
 import type { SessionManager } from './session-manager.ts';
 import { isSafeExternalUrl, isTrustedFrame } from './security.ts';
 import type { UpdateManager } from './updates.ts';
+import { homedir } from 'node:os';
+import { openFileLink } from './file-links.ts';
 
 export function registerTerminalIpc(manager: SessionManager, preferences: PreferencesStore, documentUrl: string, updates: UpdateManager,
   badge: AttentionBadge, notify: (sender: WebContents, tab: string, title: string, body: string) => void): void {
@@ -34,6 +36,10 @@ export function registerTerminalIpc(manager: SessionManager, preferences: Prefer
     owner(event);
     if (!isSafeExternalUrl(value)) throw new Error('Only HTTP and HTTPS links can be opened.');
     await shell.openExternal(value);
+  });
+  ipcMain.handle('terminal:open-file', async (event, id, value) => {
+    const cwd = manager.directory(owner(event), id);
+    await openFileLink(value, cwd, homedir(), path => shell.openPath(path));
   });
   const listen = (channel: string, handler: (event: IpcMainEvent, ...args: any[]) => void) => {
     ipcMain.on(channel, (event, ...args) => {

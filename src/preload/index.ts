@@ -32,6 +32,7 @@ const api: TerminalAPI = {
   getPreferences: () => ipcRenderer.invoke('preferences:get'),
   savePreferences: value => ipcRenderer.invoke('preferences:save', value),
   openLink: url => ipcRenderer.invoke('terminal:open-link', url),
+  openFile: (id, path) => ipcRenderer.invoke('terminal:open-file', id, path),
   setAttentionCount: count => ipcRenderer.send('attention:count', count),
   notifyAttention: (tab, title, body) => ipcRenderer.send('attention:notify', tab, title, body),
   onAttentionActivate: listener => {
