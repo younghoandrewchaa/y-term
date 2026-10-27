@@ -52,4 +52,16 @@ export async function verifySidebarResize(application: ElectronApplication, page
   await waitWidth(360);
   await divider.dblclick();
   await waitWidth(232);
+
+  const menuItem = await application.evaluate(({ Menu }) => Menu.getApplicationMenu()?.items
+    .flatMap(item => item.submenu?.items ?? []).find(item => item.label === 'Toggle Sidebar')?.accelerator);
+  assert.equal(menuItem, 'CmdOrCtrl+B');
+  const toggle = () => application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('terminal:action', 'toggle-sidebar'));
+  const screenWidth = () => page.locator('.xterm-screen').last().evaluate(node => node.getBoundingClientRect().width);
+  const shownScreen = await screenWidth();
+  await toggle();
+  await page.waitForFunction(() => document.querySelector<HTMLElement>('.sidebar')?.hidden === true);
+  await page.waitForFunction(previous => document.querySelector('.xterm-screen')!.getBoundingClientRect().width > previous, shownScreen);
+  await toggle();
+  await waitWidth(232);
 }

@@ -47,6 +47,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 svg { width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 kbd { font: inherit; font-size: 11px; color: var(--muted); }
 .sidebar { position: relative; width: 232px; flex-shrink: 0; display: flex; flex-direction: column; padding: 0 12px 12px; background: var(--sidebar); border-right: 1px solid var(--border); }
+.sidebar[hidden] { display: none; }
+.sidebar[hidden] + .workspace .session-header { padding-left: 88px; }
 #sidebar-resize { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; z-index: 2; cursor: col-resize; touch-action: none; -webkit-app-region: no-drag; }
 #sidebar-resize::after { content: ''; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; }
 #sidebar-resize:hover::after, #sidebar-resize:focus-visible::after, .resizing-sidebar #sidebar-resize::after { background: var(--accent); }

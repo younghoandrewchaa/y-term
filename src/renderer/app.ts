@@ -244,11 +244,19 @@ function find(backwards = false): void {
   const found = active && query && (backwards ? active.view.search.findPrevious(query) : active.view.search.findNext(query));
   element('find-status').textContent = query && !found ? 'No match' : '';
 }
+function toggleSidebar(): void {
+  const sidebar = element('sidebar');
+  // Hiding a focused tab button would strand keyboard focus on an invisible element.
+  const refocus = sidebar.contains(document.activeElement);
+  sidebar.hidden = !sidebar.hidden;
+  if (refocus) active?.view.focus();
+}
 function action(command: MenuAction): void {
   // App menus can fire while a modal owns focus; keep actions inside the dialog.
   if (document.querySelector('dialog[open]')) return;
   if (command === 'new-tab') void newTab().catch(report);
   else if (command === 'toggle-changes') gitPanel.toggle();
+  else if (command === 'toggle-sidebar') toggleSidebar();
   else if (command === 'close-tab') closeTab();
   else if (command === 'settings') openSettings();
   else if (command === 'next-tab') cycle(1);

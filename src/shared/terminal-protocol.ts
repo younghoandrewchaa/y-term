@@ -30,7 +30,7 @@ export interface Preferences {
   sidebarWidth?: number;
   bounds?: WindowBounds;
 }
-export type MenuAction = 'new-tab' | 'close-tab' | 'find' | 'settings' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'clear' | 'next-tab' | 'previous-tab' | 'toggle-changes';
+export type MenuAction = 'new-tab' | 'close-tab' | 'find' | 'settings' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'clear' | 'next-tab' | 'previous-tab' | 'toggle-changes' | 'toggle-sidebar';
 export interface TerminalAPI {
   getGitStatus(id: string): Promise<GitStatusResult>;
   getGitDiff(id: string, section: GitSection, path: string): Promise<GitDiffResult>;

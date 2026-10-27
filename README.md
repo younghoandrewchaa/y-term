@@ -37,6 +37,7 @@ The panel requires system Git. It displays diff hunks with three context lines, 
 - ⌘C and ⌘V copy and paste using the macOS Edit menu. Control-C remains the shell interrupt key. Multiline paste asks for confirmation.
 - Shift+Enter inserts a newline in terminal agents that support modified Enter (CSI u). Enter submits as usual.
 - Drag files or folders from Finder into a terminal to insert their quoted absolute paths. Multiple items become separate arguments followed by a space; press Enter yourself to run the command. Paths containing control characters (including tabs and newlines) are rejected.
+- ⌘B shows or hides the sessions sidebar.
 - ⌘F searches the active terminal; Enter and Shift-Enter move between matches; Escape closes search.
 - ⌘+ / ⌘− change font size, ⌘0 resets it, and ⌘K clears the display.
 - ⌘-click or Control-click opens HTTP/HTTPS links in your browser and local file paths in their default macOS app. Relative paths use the terminal session's current directory; quoted paths with spaces and local `file:` hyperlinks are supported.
