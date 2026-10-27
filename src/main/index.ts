@@ -95,7 +95,7 @@ function setMenu(): void {
       { type: 'separator' }, action('Clear Display', 'CmdOrCtrl+K', 'clear'),
     ] },
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }, { type: 'separator' }, action('Find…', 'CmdOrCtrl+F', 'find')] },
-    { label: 'View', submenu: [action('Increase Font Size', 'CmdOrCtrl+Plus', 'zoom-in'), action('Decrease Font Size', 'CmdOrCtrl+-', 'zoom-out'), action('Reset Font Size', 'CmdOrCtrl+0', 'zoom-reset'), { type: 'separator' }, { role: 'togglefullscreen' }] },
+    { label: 'View', submenu: [action('Toggle Changes', 'CmdOrCtrl+Shift+G', 'toggle-changes'), { type: 'separator' }, action('Increase Font Size', 'CmdOrCtrl+Plus', 'zoom-in'), action('Decrease Font Size', 'CmdOrCtrl+-', 'zoom-out'), action('Reset Font Size', 'CmdOrCtrl+0', 'zoom-reset'), { type: 'separator' }, { role: 'togglefullscreen' }] },
     { label: 'Window', submenu: [
       { role: 'minimize' }, { role: 'zoom' }, { type: 'separator' },
       action('Next Tab', 'Ctrl+Tab', 'next-tab'),
