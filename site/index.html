@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Y-Term — a focused terminal for macOS</title>
+  <meta name="description" content="Y-Term is a fast, focused macOS terminal for Apple Silicon with tabs, a built-in Git changes panel, clickable file links, and in-app updates.">
+  <link rel="icon" href="icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="#"><img src="icon.png" alt="" width="28" height="28"> Y-Term</a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#shortcuts">Shortcuts</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/younghoandrewchaa/y-term">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <img class="hero-icon" src="icon.png" alt="Y-Term icon" width="96" height="96">
+      <h1>A focused terminal for macOS.</h1>
+      <p class="lede">Y-Term is a quiet, native-feeling terminal for Apple Silicon. Real shells, tabs that remember where you were, and a built-in Git review panel. Nothing more than you need.</p>
+      <div class="cta">
+        <a class="button primary" href="https://github.com/younghoandrewchaa/y-term/releases/latest">Download for Apple Silicon</a>
+        <a class="button" href="https://github.com/younghoandrewchaa/y-term">View source</a>
+      </div>
+      <p class="fine">Free and open source · MIT license · macOS on Apple Silicon · signed and notarized</p>
+
+      <div class="window" aria-hidden="true">
+        <aside class="win-sidebar">
+          <div class="lights"><span></span><span></span><span></span></div>
+          <div class="win-heading">Sessions <span>3</span></div>
+          <div class="win-tab active"><i class="dot"></i>zsh</div>
+          <div class="win-tab"><i class="dot agent"></i>claude</div>
+          <div class="win-tab"><i class="dot attention"></i>npm test</div>
+          <div class="win-version">Y-Term 0.1.7</div>
+        </aside>
+        <div class="win-main">
+          <div class="win-header"><span>zsh · Local</span><span class="muted">~/github/y-term</span><span class="pill">Changes</span></div>
+<pre class="win-term"><span class="p">~/github/y-term</span> <span class="g">main</span> ❯ npm test
+
+<span class="g">✔</span> session-manager › inherits the active cwd
+<span class="g">✔</span> file-links › opens relative paths
+<span class="g">✔</span> git › reads staged and unstaged diffs
+<span class="g">✔</span> updates › verifies the signed manifest
+
+<span class="muted">ℹ tests 21  pass 21  fail 0</span>
+<span class="p">~/github/y-term</span> <span class="g">main</span> ❯ <span class="cursor"> </span></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="features">
+      <h2>Built for everyday terminal work</h2>
+      <div class="grid">
+        <article>
+          <h3>Real shells, real PTYs</h3>
+          <p>Powered by xterm.js and native pseudoterminals. zsh and bash start as login shells, so launching from Finder picks up your full <code>PATH</code>.</p>
+        </article>
+        <article>
+          <h3>Tabs that follow you</h3>
+          <p>Sessions live in a resizable sidebar. New tabs open in the active shell's current directory, and closing a tab cleanly terminates its child processes.</p>
+        </article>
+        <article>
+          <h3>Git changes panel</h3>
+          <p>Press <kbd>⇧⌘G</kbd> to review the repository you're in. Staged and unstaged diffs appear side by side and refresh automatically. The panel is read-only, so staging and committing still happen in the terminal.</p>
+        </article>
+        <article>
+          <h3>Clickable links and paths</h3>
+          <p><kbd>⌘</kbd>-click URLs to open them in your browser, and local file paths (relative, quoted, or <code>file:</code> links) in their default macOS app.</p>
+        </article>
+        <article>
+          <h3>Friendly to coding agents</h3>
+          <p>Shift+Enter inserts newlines in agents that support CSI u, pasted images reach tools that read the clipboard, and running agents are marked in the sidebar.</p>
+        </article>
+        <article>
+          <h3>Notifications that get your attention</h3>
+          <p>OSC 9 and OSC 777 notifications from long-running commands highlight their tab, so you notice when a background job needs you.</p>
+        </article>
+        <article>
+          <h3>Drag and drop from Finder</h3>
+          <p>Drop files or folders onto a terminal to insert safely quoted absolute paths. Nothing runs until you press Enter.</p>
+        </article>
+        <article>
+          <h3>Signed in-app updates</h3>
+          <p>Y-Term checks GitHub for new stable releases and installs signed updates in one click, after confirming with you first.</p>
+        </article>
+        <article>
+          <h3>Light and dark themes</h3>
+          <p>A calm palette in both themes. Font, theme, and scrollback apply immediately, and the app never saves terminal output or credentials.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="shortcuts">
+      <h2>Keyboard shortcuts</h2>
+      <table>
+        <tbody>
+          <tr><td><kbd>⌘T</kbd></td><td>New tab in the current directory</td></tr>
+          <tr><td><kbd>⌘W</kbd></td><td>Close tab and end its shell</td></tr>
+          <tr><td><kbd>⌃Tab</kbd> / <kbd>⇧⌘]</kbd></td><td>Next tab</td></tr>
+          <tr><td><kbd>⌃⇧Tab</kbd> / <kbd>⇧⌘[</kbd></td><td>Previous tab</td></tr>
+          <tr><td><kbd>⇧⌘G</kbd></td><td>Toggle the Git changes panel</td></tr>
+          <tr><td><kbd>⌘F</kbd></td><td>Search the terminal</td></tr>
+          <tr><td><kbd>⌘+</kbd> / <kbd>⌘−</kbd> / <kbd>⌘0</kbd></td><td>Bigger, smaller, and reset font size</td></tr>
+          <tr><td><kbd>⌘K</kbd></td><td>Clear the display</td></tr>
+          <tr><td><kbd>⌘,</kbd></td><td>Settings</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="install">
+      <h2>Install</h2>
+      <ol class="steps">
+        <li>Download the latest <strong>.dmg</strong> from <a href="https://github.com/younghoandrewchaa/y-term/releases/latest">GitHub Releases</a>.</li>
+        <li>Open it and drag <strong>Y-Term</strong> into your Applications folder.</li>
+        <li>Launch Y-Term. Later versions update from inside the app.</li>
+      </ol>
+      <p class="muted">Requires macOS on Apple Silicon. Intel Macs aren't supported yet.</p>
+      <h3>Build from source</h3>
+<pre class="code">git clone https://github.com/younghoandrewchaa/y-term.git
+cd y-term
+npm install
+npm start</pre>
+      <p class="muted">Requires Node.js 24.13 or later and the Xcode Command Line Tools.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>Y-Term is MIT licensed. Made by <a href="https://github.com/younghoandrewchaa">Youngho Chaa</a>.</p>
+  </footer>
+</body>
+</html>
