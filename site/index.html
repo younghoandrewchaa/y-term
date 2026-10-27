@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Y-Term — a focused terminal for macOS</title>
-  <meta name="description" content="Y-Term is a fast, focused macOS terminal for Apple Silicon with tabs, a built-in Git changes panel, clickable file links, and in-app updates.">
+  <meta name="description" content="Y-Term is a fast, focused macOS terminal for Apple Silicon with tabs, clickable file links, one-click VS Code diffs, and in-app updates.">
   <link rel="icon" href="icon.png">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -23,7 +23,7 @@
     <section class="hero">
       <img class="hero-icon" src="icon.png" alt="Y-Term icon" width="96" height="96">
       <h1>A focused terminal for macOS.</h1>
-      <p class="lede">Y-Term is a quiet, native-feeling terminal for Apple Silicon. Real shells, tabs that remember where you were, and a built-in Git review panel. Nothing more than you need.</p>
+      <p class="lede">Y-Term is a quiet, native-feeling terminal for Apple Silicon. Real shells, tabs that remember where you were, and changed files that open as diffs in VS Code. Nothing more than you need.</p>
       <div class="cta">
         <a class="button primary" href="https://github.com/younghoandrewchaa/y-term/releases/latest">Download for Apple Silicon</a>
         <a class="button" href="https://github.com/younghoandrewchaa/y-term">View source</a>
@@ -40,12 +40,12 @@
           <div class="win-version">Y-Term 0.1.7</div>
         </aside>
         <div class="win-main">
-          <div class="win-header"><span>zsh · Local</span><span class="muted">~/github/y-term</span><span class="pill">Changes</span></div>
+          <div class="win-header"><span>zsh · Local</span><span class="muted">~/github/y-term</span></div>
 <pre class="win-term"><span class="p">~/github/y-term</span> <span class="g">main</span> ❯ npm test
 
 <span class="g">✔</span> session-manager › inherits the active cwd
 <span class="g">✔</span> file-links › opens relative paths
-<span class="g">✔</span> git › reads staged and unstaged diffs
+<span class="g">✔</span> git › compares changes with the staged version
 <span class="g">✔</span> updates › verifies the signed manifest
 
 <span class="muted">ℹ tests 21  pass 21  fail 0</span>
@@ -66,8 +66,8 @@
           <p>Sessions live in a resizable sidebar. New tabs open in the active shell's current directory, and closing a tab cleanly terminates its child processes.</p>
         </article>
         <article>
-          <h3>Git changes panel</h3>
-          <p>Press <kbd>⇧⌘G</kbd> to review the repository you're in. Staged and unstaged diffs appear side by side and refresh automatically. The panel is read-only, so staging and committing still happen in the terminal.</p>
+          <h3>Diffs in VS Code</h3>
+          <p><kbd>⌘</kbd>-click a changed file in <code>git status</code> output to open it in VS Code's diff editor, compared with the staged or committed version. <kbd>⌥⌘</kbd>-click opens the file itself.</p>
         </article>
         <article>
           <h3>Clickable links and paths</h3>
@@ -105,7 +105,6 @@
           <tr><td><kbd>⌃Tab</kbd> / <kbd>⇧⌘]</kbd></td><td>Next tab</td></tr>
           <tr><td><kbd>⌃⇧Tab</kbd> / <kbd>⇧⌘[</kbd></td><td>Previous tab</td></tr>
           <tr><td><kbd>⌘B</kbd></td><td>Show or hide the sidebar</td></tr>
-          <tr><td><kbd>⇧⌘G</kbd></td><td>Toggle the Git changes panel</td></tr>
           <tr><td><kbd>⌘F</kbd></td><td>Search the terminal</td></tr>
           <tr><td><kbd>⌘+</kbd> / <kbd>⌘−</kbd> / <kbd>⌘0</kbd></td><td>Bigger, smaller, and reset font size</td></tr>
           <tr><td><kbd>⌘K</kbd></td><td>Clear the display</td></tr>

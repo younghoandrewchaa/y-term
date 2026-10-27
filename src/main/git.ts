@@ -1,12 +1,18 @@
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
-import { constants } from 'node:fs';
-import { open, realpath } from 'node:fs/promises';
-import { dirname, isAbsolute, join, relative, sep } from 'node:path';
-import type { GitDiffResult, GitEntry, GitSection, GitStatusResult } from '../shared/git-protocol.ts';
+import { realpath } from 'node:fs/promises';
+import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
+
+export type GitSection = 'unstaged' | 'staged';
+export interface GitEntry {
+  path: string;
+  originalPath?: string;
+  section: GitSection;
+  kind: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'conflicted' | 'submodule' | 'type-changed' | 'unsupported-path';
+}
 
 const STATUS_LIMIT = 4 * 1024 * 1024;
-const DIFF_LIMIT = 2 * 1024 * 1024;
+const BASELINE_LIMIT = 16 * 1024 * 1024;
 const conflicts = new Set(['DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU']);
 const utf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 type FailureReason = 'not-repository' | 'git-missing' | 'too-large' | 'timeout' | 'error';
@@ -14,11 +20,8 @@ class GitFailure extends Error {
   readonly reason: FailureReason;
   constructor(reason: FailureReason, message: string) { super(message); this.reason = reason; }
 }
-const summary = (reason: Extract<GitDiffResult, { kind: 'summary' }>['reason'], message: string): GitDiffResult => ({ kind: 'summary', reason, message });
-function validPath(path: unknown): path is string {
-  return typeof path === 'string' && path.length > 0 && path.length <= 32768 && !path.includes('\0')
-    && !isAbsolute(path) && !path.split('/').some(part => part === '..' || part === '.' || part === '');
-}
+/** The version a changed file is compared with: the index for unstaged changes, HEAD for staged-only changes. */
+export interface GitBaseline { label: 'HEAD' | 'Staged'; content: Buffer }
 
 export function parseGitStatus(buffer: Buffer): GitEntry[] {
   const records: Buffer[] = [];
@@ -79,10 +82,10 @@ export class GitService {
       const output: Buffer[] = []; const errors: Buffer[] = [];
       let bytes = 0, errorBytes = 0, failure: GitFailure | undefined;
       const stop = (reason: FailureReason, message: string) => { failure ??= new GitFailure(reason, message); child.kill('SIGKILL'); };
-      const timer = setTimeout(() => stop('timeout', 'Git took too long. Refresh to try again.'), this.options.timeout ?? 5000);
+      const timer = setTimeout(() => stop('timeout', 'Git took too long.'), this.options.timeout ?? 5000);
       child.stdout.on('data', (data: Buffer) => {
         bytes += data.length;
-        if (bytes > limit) stop('too-large', 'These changes are too large to display.');
+        if (bytes > limit) stop('too-large', 'This file is too large to compare.');
         else output.push(data);
       });
       child.stderr.on('data', (data: Buffer) => { errorBytes += data.length; if (errorBytes <= 65536) errors.push(data); });
@@ -96,73 +99,37 @@ export class GitService {
         if (this.disposed.has(owner)) { reject(new GitFailure('error', 'This window has closed.')); return; }
         if (code !== 0) {
           const error = Buffer.concat(errors).toString('utf8');
-          reject(new GitFailure(/not a git repository/i.test(error) ? 'not-repository' : 'error', /not a git repository/i.test(error) ? 'This terminal is outside a Git repository.' : `Could not read Git changes. ${error.slice(0, 500).trim()}`));
+          reject(new GitFailure(/not a git repository/i.test(error) ? 'not-repository' : 'error', /not a git repository/i.test(error) ? 'This file is outside a Git repository.' : `Could not read this file from Git. ${error.slice(0, 500).trim()}`));
         } else resolve(Buffer.concat(output));
       });
     });
   }
 
-  async status(owner: number, cwd: string): Promise<GitStatusResult> {
-    try {
-      const rootBytes = await this.run(owner, cwd, ['rev-parse', '--show-toplevel'], STATUS_LIMIT);
-      const root = await realpath(utf8.decode(rootBytes).replace(/\n$/, ''));
-      const output = await this.run(owner, root, ['status', '--porcelain=v1', '-z', '--untracked-files=all', '--ignore-submodules=none'], this.options.statusLimit ?? STATUS_LIMIT);
-      return { kind: 'ready', root, entries: parseGitStatus(output) };
-    } catch (error) {
-      return { kind: 'unavailable', reason: error instanceof GitFailure ? error.reason : 'error', message: error instanceof Error ? error.message : 'Could not read Git changes.' };
-    }
-  }
-
-  async diff(owner: number, cwd: string, section: GitSection, path: string): Promise<GitDiffResult> {
-    if (!validPath(path) || !['unstaged', 'staged'].includes(section)) return summary('error', 'Invalid Git file request.');
-    const status = await this.status(owner, cwd);
-    if (status.kind !== 'ready') return summary(status.reason === 'too-large' ? 'too-large' : 'error', status.message);
-    const entry = status.entries.find(e => e.path === path && e.section === section);
-    if (!entry) return summary('stale', 'This file has changed or is no longer in this list. Refresh to try again.');
-    if (entry.kind === 'unsupported-path') return summary('unsupported-encoding', 'This filename is not UTF-8 and cannot be displayed.');
-    if (entry.kind === 'conflicted') return summary('conflict', 'This file has merge conflicts. Resolve them in your editor or terminal.');
-    try {
-      if (entry.kind === 'untracked') return await this.untracked(status.root, entry);
-      const patchBytes = await this.run(owner, status.root, [
-        'diff', ...(section === 'staged' ? ['--cached'] : []), '--patch', '--unified=3', '--no-color', '--no-ext-diff', '--no-textconv',
-        '--no-relative', '--src-prefix=a/', '--dst-prefix=b/', '--line-prefix=', '--output-indicator-new=+', '--output-indicator-old=-',
-        '--output-indicator-context= ', '--find-renames', '--ignore-submodules=none', '--submodule=short', '--',
-        ...(entry.originalPath && validPath(entry.originalPath) ? [entry.originalPath] : []), entry.path,
-      ], DIFF_LIMIT);
-      let patch: string;
-      try { patch = utf8.decode(patchBytes); } catch { return summary('unsupported-encoding', 'This file is not UTF-8 and cannot be displayed.'); }
-      if (/^Binary files /m.test(patch) || patch.includes('\0')) return summary('binary', 'Binary file — text comparison is unavailable.');
-      if (/^index .* 160000$/m.test(patch) || /^[-+]Subproject commit /m.test(patch)) return summary('submodule', 'Submodule changes — inspect this repository in the terminal.');
-      if (!/^@@ /m.test(patch)) return summary('metadata-only', patch ? 'Only file metadata changed (rename, permissions, or file type).' : 'No text changes. Refresh if this file has changed.');
-      return { kind: 'patch', root: status.root, entry, patch };
-    } catch (error) {
-      return summary(error instanceof GitFailure && error.reason === 'too-large' ? 'too-large' : 'error', error instanceof Error ? error.message : 'Could not read this file.');
-    }
-  }
-
-  private async untracked(root: string, entry: GitEntry): Promise<GitDiffResult> {
-    // Resolve the parent before opening, and never follow the final component.
-    const parent = await realpath(dirname(join(root, entry.path)));
-    const within = relative(root, parent);
-    if (within === '..' || within.startsWith(`..${sep}`) || isAbsolute(within)) return summary('error', 'This path leaves the repository.');
-    let file;
-    try { file = await open(join(parent, entry.path.split('/').at(-1)!), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK); }
-    catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ELOOP') return summary('metadata-only', 'Untracked symbolic link — target content is not read.');
-      return summary('stale', 'This file is no longer readable. Refresh to try again.');
-    }
-    try {
-      const info = await file.stat();
-      if (!info.isFile()) return summary('metadata-only', 'Only regular text files can be previewed.');
-      if (info.size > DIFF_LIMIT) return summary('too-large', 'This file is too large to display (2 MiB limit).');
-      const buffer = Buffer.alloc(Math.min(info.size + 1, DIFF_LIMIT + 1));
-      let size = 0;
-      while (size < buffer.length) { const read = await file.read(buffer, size, buffer.length - size, null); if (!read.bytesRead) break; size += read.bytesRead; }
-      if (size > info.size) return summary('stale', 'This file changed during loading. Refresh to try again.');
-      const content = buffer.subarray(0, size);
-      if (content.includes(0)) return summary('binary', 'Binary file — text comparison is unavailable.');
-      try { return { kind: 'untracked', root, entry, content: utf8.decode(content) }; }
-      catch { return summary('unsupported-encoding', 'This file is not UTF-8 and cannot be displayed.'); }
-    } finally { await file.close(); }
+  /** Returns undefined for files that are unchanged, untracked, conflicted, newly added, or outside a repository. */
+  async baseline(owner: number, file: string): Promise<GitBaseline | undefined> {
+    if (!isAbsolute(file)) return undefined;
+    // Resolve the parent so the path matches Git's view, but never follow the file itself.
+    const parent = await realpath(dirname(file));
+    let root: string;
+    try { root = await realpath(utf8.decode(await this.run(owner, parent, ['rev-parse', '--show-toplevel'], STATUS_LIMIT)).replace(/\n$/, '')); }
+    catch (error) { if (error instanceof GitFailure && error.reason === 'not-repository') return undefined; throw error; }
+    const path = relative(root, join(parent, basename(file)));
+    if (!path || path === '..' || path.startsWith(`..${sep}`) || isAbsolute(path)) return undefined;
+    // Read the whole repository: a path-limited status cannot detect that the file was renamed.
+    const output = await this.run(owner, root, ['status', '--porcelain=v1', '-z', '--untracked-files=no'], this.options.statusLimit ?? STATUS_LIMIT);
+    const entries = parseGitStatus(output).filter(entry => entry.path === path);
+    const entry = (section: GitSection) => entries.find(item => item.section === section);
+    const unstaged = entry('unstaged'), staged = entry('staged');
+    let object: string;
+    if (unstaged) {
+      if (unstaged.kind !== 'modified' && unstaged.kind !== 'type-changed') return undefined;
+      // Stage 0 explicitly: a path such as "1:file" would otherwise name a merge stage.
+      object = `:0:${path}`;
+    } else if (staged && (staged.kind === 'modified' || staged.kind === 'type-changed')) object = `HEAD:${path}`;
+    else if (staged?.kind === 'renamed' && staged.originalPath !== undefined) object = `HEAD:${staged.originalPath}`;
+    else return undefined;
+    // Filters apply the same line-ending and smudge conversion as a checkout.
+    const content = await this.run(owner, root, ['cat-file', '--filters', object], BASELINE_LIMIT);
+    return { label: unstaged && staged ? 'Staged' : 'HEAD', content };
   }
 }

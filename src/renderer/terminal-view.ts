@@ -33,7 +33,7 @@ export class TerminalView {
     this.host = host;
     const activateFile = (event: MouseEvent, path: string) => {
       if ((event.metaKey || event.ctrlKey) && this.session.id) {
-        void window.terminal.openFile(this.session.id, path).catch(error => status(String(error)));
+        void window.terminal.openFile(this.session.id, path, event.altKey).catch(error => status(String(error)));
       }
     };
     const activateLink = (event: MouseEvent, uri: string) => {

@@ -36,3 +36,19 @@ test('opens existing files and reports missing files or native app failures', as
     await assert.rejects(openFileLink('plan.md', directory, '/home/me', async () => 'No default app'), /No default app/);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
+
+test('tries a diff first unless the link points at a line, and opens the file when there is no diff', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'y-term-file-links-'));
+  try {
+    const path = join(directory, 'plan.md');
+    await writeFile(path, 'plan');
+    const opened: string[] = [], diffed: string[] = [];
+    const open = async (value: string) => { opened.push(value); return ''; };
+    await openFileLink('plan.md', directory, '/home/me', open, async value => { diffed.push(value); return true; });
+    assert.deepEqual([opened, diffed], [[], [path]]);
+    await openFileLink('plan.md', directory, '/home/me', open, async () => false);
+    assert.deepEqual(opened, [path]);
+    await openFileLink('plan.md:12', directory, '/home/me', open, async () => assert.fail('line references must not diff'));
+    assert.deepEqual(opened, [path, path]);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});

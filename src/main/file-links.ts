@@ -26,9 +26,11 @@ export function resolveFileLink(value: unknown, cwd: string | undefined, home: s
 }
 
 export async function openFileLink(value: unknown, cwd: string | undefined, home: string,
-  open: (path: string) => Promise<string>): Promise<void> {
+  open: (path: string) => Promise<string>, diff?: (path: string) => Promise<boolean>): Promise<void> {
   const path = resolveFileLink(value, cwd, home);
   await stat(path);
+  // A line reference points at a location to read, not at changes to review.
+  if (diff && !/:\d+(?::\d+)?$/.test(value as string) && await diff(path)) return;
   const error = await open(path);
   if (error) throw new Error(error);
 }
