@@ -25,13 +25,14 @@ export function validatePreferences(value: unknown): Preferences {
   for (const key of ['shell', 'cwd'] as const) {
     if (typeof p[key] !== 'string' || !isAbsolute(p[key]) || p[key].length > 4096 || /[\x00-\x1f]/.test(p[key])) throw new Error(`${key} must be an absolute path.`);
   }
-  let bounds: WindowBounds | undefined;
-  if (p.bounds !== undefined) {
-    const b = p.bounds;
-    if (!b || !integer(b.x, -100000, 100000) || !integer(b.y, -100000, 100000) || !integer(b.width, 400, 10000) || !integer(b.height, 300, 10000)) throw new Error('Invalid window bounds.');
-    bounds = { x: b.x, y: b.y, width: b.width, height: b.height };
-  }
+  const bounds = p.bounds === undefined ? undefined : validateBounds(p.bounds);
   return { fontFamily: p.fontFamily, fontSize: p.fontSize, theme: p.theme, scrollback: p.scrollback, shell: p.shell, cwd: p.cwd, ...(p.sidebarWidth !== undefined ? { sidebarWidth: p.sidebarWidth } : {}), ...(bounds ? { bounds } : {}) };
+}
+
+export function validateBounds(value: unknown): WindowBounds {
+  const b = value as WindowBounds;
+  if (!b || typeof b !== 'object' || !integer(b.x, -100000, 100000) || !integer(b.y, -100000, 100000) || !integer(b.width, 400, 10000) || !integer(b.height, 300, 10000)) throw new Error('Invalid window bounds.');
+  return { x: b.x, y: b.y, width: b.width, height: b.height };
 }
 
 export class PreferencesStore {

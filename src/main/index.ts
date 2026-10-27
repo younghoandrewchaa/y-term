@@ -6,12 +6,15 @@ import { spawn } from 'node-pty';
 import { AttentionBadge } from './attention.ts';
 import { PreferencesStore, visibleBounds } from './preferences.ts';
 import { SessionManager } from './session-manager.ts';
-import { buildShellLaunch, runningAgentsAsync, shellCurrentDirectory, shellCurrentDirectoryAsync, terminatePty } from './shell.ts';
+import { buildShellLaunch, runningAgentsAsync, shellCurrentDirectory, shellCurrentDirectoryAsync, terminatePty, usableDirectory } from './shell.ts';
 import { registerTerminalIpc } from './terminal-ipc.ts';
-import type { MenuAction } from '../shared/terminal-protocol.ts';
+import type { MenuAction, RestoredTabs } from '../shared/terminal-protocol.ts';
 import { UpdateManager, releaseApiUrl } from './updates.ts';
 import { GitService } from './git.ts';
 import { VsCodeDiff } from './vscode-diff.ts';
+import { agentSessionOf, processSnapshot } from './agent-sessions.ts';
+import { discardSnapshot, takeSnapshot, writeSnapshot } from './restore.ts';
+import type { RestoreWindow } from './restore.ts';
 
 // An isolated data directory also makes automated smoke tests non-destructive.
 if (process.env.Y_TERM_TEST_DATA) app.setPath('userData', process.env.Y_TERM_TEST_DATA);
@@ -27,6 +30,8 @@ const git = new GitService();
 const vscode = new VsCodeDiff();
 // Electron drops click handlers of notifications that are garbage collected.
 const notifications = new Set<Notification>();
+// Tabs saved before an update restart, handed to each reopened window once.
+const restores = new Map<number, RestoredTabs>();
 
 function sendAction(action: MenuAction): void {
   BrowserWindow.getFocusedWindow()?.webContents.send('terminal:action', action);
@@ -51,9 +56,9 @@ function notifyAttention(contents: WebContents, tab: string, title: string, body
   notification.show();
 }
 
-function createWindow(): void {
+function createWindow(restore?: RestoreWindow): void {
   const window = new BrowserWindow({
-    ...visibleBounds(preferences.get().bounds, screen.getAllDisplays().map(d => d.workArea)),
+    ...visibleBounds(restore?.bounds ?? preferences.get().bounds, screen.getAllDisplays().map(d => d.workArea)),
     minWidth: 640, minHeight: 400, title: 'Y-Term',
     backgroundColor: preferences.get().theme === 'dark' ? '#101216' : '#faf9f6',
     titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 17 },
@@ -65,20 +70,20 @@ function createWindow(): void {
     },
   });
   const owner = window.webContents.id;
+  if (restore) restores.set(owner, { tabs: restore.tabs, active: restore.active });
+  const release = () => { manager.closeOwner(owner); attention.clear(owner); git.disposeOwner(owner); restores.delete(owner); };
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.webContents.on('will-attach-webview', event => event.preventDefault());
   window.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   window.webContents.session.setPermissionCheckHandler(() => false);
-  window.webContents.on('render-process-gone', () => { manager.closeOwner(owner); attention.clear(owner); git.disposeOwner(owner); });
+  window.webContents.on('render-process-gone', release);
   window.on('close', () => {
     try { preferences.save({ ...preferences.get(), bounds: window.getNormalBounds() }); }
     catch (error) { console.error('Could not save window bounds:', error); }
-    manager.closeOwner(owner);
-    attention.clear(owner);
-    git.disposeOwner(owner);
+    release();
   });
-  window.webContents.on('destroyed', () => { manager.closeOwner(owner); attention.clear(owner); git.disposeOwner(owner); });
+  window.webContents.on('destroyed', release);
   window.once('ready-to-show', () => window.show());
   void window.loadURL(documentUrl).catch(error => dialog.showErrorBox('Y-Term could not open', String(error)));
 }
@@ -113,7 +118,7 @@ void app.whenReady().then(() => {
   app.dock?.setIcon(join(__dirname, '../../assets/icon.png'));
   preferences = new PreferencesStore(app.getPath('userData'));
   manager = new SessionManager((size, cwd) => {
-    const launch = buildShellLaunch({ ...preferences.get(), ...(cwd ? { cwd } : {}) }, size, process.env);
+    const launch = buildShellLaunch({ ...preferences.get(), ...(usableDirectory(cwd) ? { cwd } : {}) }, size, process.env);
     return spawn(launch.file, launch.args, launch.options);
   }, (owner, event) => {
     const contents = webContents.fromId(owner);
@@ -136,7 +141,7 @@ void app.whenReady().then(() => {
       const options = {
         type: 'warning' as const, buttons: ['Cancel', 'Update and Restart'], defaultId: 0, cancelId: 0,
         title: 'Update Y-Term?', message: 'Download the update and restart Y-Term?',
-        detail: 'When the download finishes, all terminal sessions will end and running processes will be stopped. Save your work before continuing.',
+        detail: 'When the download finishes, Y-Term restarts and reopens your tabs in their current folders, resuming Claude and Codex sessions. Other running processes will be stopped. Save your work before continuing.',
       };
       const window = BrowserWindow.getFocusedWindow();
       const result = await (window ? dialog.showMessageBox(window, options) : dialog.showMessageBox(options));
@@ -145,8 +150,20 @@ void app.whenReady().then(() => {
     publish: state => {
       for (const window of BrowserWindow.getAllWindows()) window.webContents.send('updates:state', state);
     },
+    beforeRestart: version => {
+      const processes = processSnapshot();
+      const windows = BrowserWindow.getAllWindows().flatMap(window => {
+        const { tabs, active } = manager.tabsOf(window.webContents.id);
+        return tabs.length ? [{ bounds: window.getNormalBounds(), active, tabs: tabs.map(({ pid, cwd, agent }) => {
+          const resume = agent && cwd && processes ? agentSessionOf(pid, cwd, processes) : undefined;
+          return { ...(cwd ? { cwd } : {}), ...(resume ? { resume } : {}) };
+        }) }] : [];
+      });
+      if (windows.length) writeSnapshot(app.getPath('userData'), { version, windows });
+    },
+    restartFailed: () => discardSnapshot(app.getPath('userData')),
   });
-  registerTerminalIpc(manager, preferences, documentUrl, updates, attention, notifyAttention, git, vscode);
+  registerTerminalIpc(manager, preferences, documentUrl, updates, attention, notifyAttention, git, vscode, restores);
   void updates.check();
   // Schedule after completion so slow lookups never accumulate overlapping polls.
   const refreshDirectories = async () => {
@@ -154,7 +171,10 @@ void app.whenReady().then(() => {
     setTimeout(refreshDirectories, 1000).unref();
   };
   void refreshDirectories();
-  setMenu(); createWindow();
+  setMenu();
+  const snapshot = takeSnapshot(app.getPath('userData'), app.getVersion());
+  if (snapshot?.windows.length) for (const window of snapshot.windows) createWindow(window);
+  else createWindow();
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
 }).catch(error => { dialog.showErrorBox('Y-Term could not start', String(error)); app.quit(); });
 

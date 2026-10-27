@@ -19,9 +19,14 @@ export async function shellCurrentDirectoryAsync(pid: number): Promise<string | 
 
 function directoryFromLsof(output: string): string | undefined {
   const cwd = output.split('\0').find(field => field.startsWith('n'))?.slice(1);
-  if (!cwd || !isAbsolute(cwd) || cwd.length > 4096 || /[\x00-\x1f]/.test(cwd) || !statSync(cwd).isDirectory()) return undefined;
-  accessSync(cwd, constants.R_OK | constants.X_OK);
-  return cwd;
+  return cwd && usableDirectory(cwd) ? cwd : undefined;
+}
+
+/** An absolute, readable directory a shell can start in. */
+export function usableDirectory(path: unknown): path is string {
+  if (typeof path !== 'string' || !isAbsolute(path) || path.length > 4096 || /[\x00-\x1f]/.test(path)) return false;
+  try { accessSync(path, constants.R_OK | constants.X_OK); return statSync(path).isDirectory(); }
+  catch { return false; }
 }
 
 /** Query the shell itself so this also works without shell integration hooks. */
@@ -87,13 +92,19 @@ export function agentName(command: string): string | undefined {
 
 /** Find an agent running anywhere below the shell, so background and nested agents also count. */
 export function agentOf(parent: number, snapshot: string): string | undefined {
+  return agentProcessOf(parent, snapshot)?.name;
+}
+
+/** The outermost agent below the shell, so tools an agent runs never mask the agent itself. */
+export function agentProcessOf(parent: number, snapshot: string): { name: string; pid: number } | undefined {
   const commands = new Map(snapshot.trim().split('\n').map(line => {
     const [, pid, command] = /^\s*(\d+)\s+\d+\s+(.*)$/.exec(line) ?? [];
     return [Number(pid), command ?? ''] as const;
   }));
-  for (const pid of descendantsOf(parent, snapshot)) {
-    const agent = agentName(commands.get(pid) ?? '');
-    if (agent) return agent;
+  // Descendants are listed children first, so the last agent has no agent above it.
+  for (const pid of descendantsOf(parent, snapshot).reverse()) {
+    const name = agentName(commands.get(pid) ?? '');
+    if (name) return { name, pid };
   }
   return undefined;
 }

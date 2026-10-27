@@ -97,3 +97,31 @@ test('native no-update response recovers instead of remaining busy', async () =>
   f.native.emit('update-not-available');
   assert.equal(f.manager.getState().status, 'idle'); assert.equal(f.native.installs, 0);
 });
+
+test('saves tabs for the new version just before restarting, without letting failures block it', async () => {
+  for (const fail of [false, true]) {
+    const native = new NativeUpdater();
+    const calls: string[] = [];
+    native.quitAndInstall = () => { calls.push('install'); };
+    const manager = new UpdateManager({ version: '0.1.3', enabled: true, native, fetchRelease: async () => release(),
+      confirm: async () => true, publish: () => {},
+      beforeRestart: version => { calls.push(`save ${version}`); if (fail) throw new Error('disk full'); },
+      restartFailed: () => calls.push('discard') });
+    await manager.check(); await manager.install();
+    assert.deepEqual(calls, []);
+    native.emit('update-downloaded');
+    assert.deepEqual(calls, ['save 0.2.0', 'install']);
+  }
+});
+
+test('discards saved tabs when the restart cannot begin', async () => {
+  const native = new NativeUpdater();
+  native.quitAndInstall = () => { throw new Error('not signed'); };
+  const calls: string[] = [];
+  const manager = new UpdateManager({ version: '0.1.3', enabled: true, native, fetchRelease: async () => release(),
+    confirm: async () => true, publish: () => {}, beforeRestart: () => calls.push('save'), restartFailed: () => calls.push('discard') });
+  await manager.check(); await manager.install();
+  native.emit('update-downloaded');
+  assert.deepEqual(calls, ['save', 'discard']);
+  assert.equal(manager.getState().status, 'error');
+});

@@ -27,8 +27,8 @@ export class TerminalSession {
       else output.exited(event.error ?? `Shell exited with status ${event.exitCode}${event.signal ? ` (signal ${event.signal})` : ''}. Open a new tab to start a fresh shell.`);
     });
   }
-  async start(size: Dimensions, sourceId?: string): Promise<void> {
-    const id = await this.api.create(size, sourceId);
+  async start(size: Dimensions, sourceId?: string, cwd?: string): Promise<void> {
+    const id = await this.api.create(size, sourceId, cwd);
     if (this.closed) { await this.api.close(id); return; }
     this.id = id;
     if (this.pendingSize) this.api.resize(id, this.pendingSize.cols, this.pendingSize.rows);

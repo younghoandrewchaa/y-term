@@ -10,9 +10,10 @@ import { homedir } from 'node:os';
 import { openFileLink } from './file-links.ts';
 import type { GitService } from './git.ts';
 import type { VsCodeDiff } from './vscode-diff.ts';
+import type { RestoredTabs } from '../shared/terminal-protocol.ts';
 
 export function registerTerminalIpc(manager: SessionManager, preferences: PreferencesStore, documentUrl: string, updates: UpdateManager,
-  badge: AttentionBadge, notify: (sender: WebContents, tab: string, title: string, body: string) => void, git: GitService, vscode: VsCodeDiff): void {
+  badge: AttentionBadge, notify: (sender: WebContents, tab: string, title: string, body: string) => void, git: GitService, vscode: VsCodeDiff, restores: Map<number, RestoredTabs>): void {
   function owner(event: IpcMainEvent | IpcMainInvokeEvent): number {
     if (!BrowserWindow.fromWebContents(event.sender) || !isTrustedFrame(event.senderFrame?.url, documentUrl, event.senderFrame === event.sender.mainFrame)) {
       throw new Error('Untrusted terminal request.');
@@ -22,12 +23,18 @@ export function registerTerminalIpc(manager: SessionManager, preferences: Prefer
   ipcMain.handle('updates:get', event => { owner(event); return updates.getState(); });
   ipcMain.handle('updates:check', async event => { owner(event); await updates.check(true); return updates.getState(); });
   ipcMain.handle('updates:install', event => { owner(event); return updates.install(); });
-  ipcMain.handle('terminal:create', (event, size, sourceId) => {
-    const id = manager.create(owner(event), size, sourceId);
+  ipcMain.handle('terminal:create', (event, size, sourceId, cwd) => {
+    const id = manager.create(owner(event), size, sourceId, cwd);
     void updates.check();
     return id;
   });
   ipcMain.handle('terminal:close', (event, id) => manager.close(owner(event), id));
+  ipcMain.handle('session:take-restore', event => {
+    const id = owner(event);
+    const restored = restores.get(id);
+    restores.delete(id);
+    return restored;
+  });
   ipcMain.handle('preferences:get', event => { owner(event); return preferences.get(); });
   ipcMain.handle('preferences:save', (event, value) => {
     owner(event);
@@ -61,6 +68,7 @@ export function registerTerminalIpc(manager: SessionManager, preferences: Prefer
   listen('terminal:write', (event, id, data, binary) => manager.write(event.sender.id, id, data, binary));
   listen('terminal:resize', (event, id, cols, rows) => manager.resize(event.sender.id, id, cols, rows));
   listen('terminal:ack', (event, id, sequence) => manager.ack(event.sender.id, id, sequence));
+  listen('session:layout', (event, ids, active) => manager.arrange(event.sender.id, ids, active));
   listen('attention:count', (event, count) => badge.set(event.sender.id, count));
   listen('attention:notify', (event, tab, title, body) => {
     if (typeof tab !== 'string' || !/^tab-\d+$/.test(tab)) return;

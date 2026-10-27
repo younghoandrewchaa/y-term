@@ -205,3 +205,32 @@ test('reports agents starting and stopping and keeps state when the process snap
   await manager.refreshAgents(async () => () => 'Codex');
   assert.deepEqual(events, [{ type: 'agent', id }], 'an exited shell clears its agent');
 });
+
+test('starts in a requested directory unless a source tab is given', () => {
+  const directories: (string | undefined)[] = [];
+  const manager = new SessionManager((_size, directory) => { directories.push(directory); return new FakePty(); }, () => {}, () => {}, () => '/source');
+  const first = manager.create(1, { cols: 80, rows: 24 }, undefined, '/restored');
+  manager.create(1, { cols: 80, rows: 24 }, first, '/ignored');
+  assert.throws(() => manager.create(1, { cols: 80, rows: 24 }, undefined, 42 as unknown as string), /directory/i);
+  assert.deepEqual(directories, ['/restored', '/source']);
+});
+
+test('reports live tabs in sidebar order with fresh directories and the active tab', () => {
+  const ptys: FakePty[] = [];
+  const directories: Record<number, string> = { 100: '/a', 101: '/b-now' };
+  const manager = new SessionManager(() => {
+    const pty = new FakePty(); pty.pid = 100 + ptys.length; ptys.push(pty); return pty;
+  }, () => {}, () => {}, pid => directories[pid]);
+  const [a, b, c] = [0, 1, 2].map(() => manager.create(1, { cols: 80, rows: 24 }));
+  const foreign = manager.create(2, { cols: 80, rows: 24 });
+  manager.arrange(1, [b, foreign, 'unknown', a, c], b);
+  ptys[2].exit({ exitCode: 0 });
+  assert.deepEqual(manager.tabsOf(1), { tabs: [{ pid: 101, cwd: '/b-now' }, { pid: 100, cwd: '/a' }], active: 0 });
+  manager.arrange(1, [a], foreign);
+  assert.deepEqual(manager.tabsOf(1).active, 0, 'a foreign active tab is ignored');
+  assert.deepEqual(manager.tabsOf(1).tabs.map(tab => tab.pid), [100, 101], 'unreported tabs follow in creation order');
+  manager.arrange(1, 'not a list', a);
+  manager.closeOwner(1);
+  assert.deepEqual(manager.tabsOf(1), { tabs: [], active: 0 });
+  assert.deepEqual(manager.tabsOf(2).tabs.map(tab => tab.pid), [103]);
+});
