@@ -126,6 +126,12 @@ export class SessionManager {
     return this.sessions.size;
   }
 
+  directoryFor(owner: number, id: string): string | undefined {
+    const session = this.owned(owner, id);
+    if (session.ended) throw new Error('The shell has exited. Open a new tab.');
+    return this.currentDirectory(session.pty.pid);
+  }
+
   directory(owner: number, id: string): string | undefined {
     const session = this.owned(owner, id);
     const cwd = session.ended ? undefined : this.currentDirectory(session.pty.pid);

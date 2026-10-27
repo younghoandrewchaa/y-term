@@ -3,6 +3,23 @@ import assert from 'node:assert/strict';
 import { SessionManager } from '../src/main/session-manager.ts';
 import type { PtyProcess, TerminalEvent } from '../src/shared/terminal-protocol.ts';
 
+test('Git directory reads require an owned live session and never fall back to a cached directory', () => {
+  const pty = new FakePty();
+  let cwd: string | undefined = '/first';
+  const manager = new SessionManager(() => pty, () => {}, () => {}, () => cwd);
+  const id = manager.create(1, { cols: 80, rows: 24 });
+  assert.equal(manager.directoryFor(1, id), '/first');
+  cwd = '/after-cd';
+  assert.equal(manager.directoryFor(1, id), '/after-cd');
+  cwd = undefined;
+  assert.equal(manager.directoryFor(1, id), undefined);
+  assert.throws(() => manager.directoryFor(2, id), /session/i);
+  pty.exit({ exitCode: 0 }); cwd = '/reused-pid';
+  assert.throws(() => manager.directoryFor(1, id), /exited/i);
+  manager.close(1, id);
+  assert.throws(() => manager.directoryFor(1, id), /session/i);
+});
+
 test('file links use the owned session live directory and retain it after exit', async () => {
   const pty = new FakePty();
   let cwd: string | undefined = '/first';

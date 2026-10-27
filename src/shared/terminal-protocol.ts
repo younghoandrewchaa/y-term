@@ -1,4 +1,5 @@
 import type { UpdateState } from './update-protocol.ts';
+import type { GitDiffResult, GitSection, GitStatusResult } from './git-protocol.ts';
 
 export interface Disposable { dispose(): void }
 export interface PtyProcess {
@@ -31,6 +32,8 @@ export interface Preferences {
 }
 export type MenuAction = 'new-tab' | 'close-tab' | 'find' | 'settings' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'clear' | 'next-tab' | 'previous-tab';
 export interface TerminalAPI {
+  getGitStatus(id: string): Promise<GitStatusResult>;
+  getGitDiff(id: string, section: GitSection, path: string): Promise<GitDiffResult>;
   getUpdateState(): Promise<UpdateState>;
   checkForUpdates(): Promise<UpdateState>;
   installUpdate(): Promise<void>;

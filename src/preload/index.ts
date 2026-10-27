@@ -4,6 +4,8 @@ import type { MenuAction, TerminalAPI, TerminalEvent } from '../shared/terminal-
 import type { UpdateState } from '../shared/update-protocol.ts';
 
 const api: TerminalAPI = {
+  getGitStatus: id => ipcRenderer.invoke('git:status', id),
+  getGitDiff: (id, section, path) => ipcRenderer.invoke('git:diff', id, section, path),
   getUpdateState: () => ipcRenderer.invoke('updates:get'),
   checkForUpdates: () => ipcRenderer.invoke('updates:check'),
   installUpdate: () => ipcRenderer.invoke('updates:install'),
