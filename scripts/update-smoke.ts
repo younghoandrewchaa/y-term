@@ -43,6 +43,11 @@ try {
     await page.getByRole('button', { name: 'Check for updates' }).click();
     await page.waitForFunction(() => document.getElementById('update-status')?.textContent === 'Y-Term is up to date');
     assert.equal(await page.locator('#update-check').isEnabled(), true);
+    const shownAt = Date.now();
+    await page.waitForFunction(() => document.getElementById('update-status')?.hidden, undefined, { timeout: 6500 });
+    assert.ok(Date.now() - shownAt >= 4900, 'Up-to-date feedback should remain visible for five seconds');
+    await page.getByRole('button', { name: 'Check for updates' }).click();
+    await page.waitForFunction(() => document.getElementById('update-status')?.textContent === 'Y-Term is up to date');
     await publish({ version, status: 'checking' });
     assert.equal(await page.locator('#update-check').isDisabled(), true);
     await publish({ version, status: 'idle' });

@@ -31,6 +31,7 @@ let counter = 0;
 
 let updateState: UpdateState | undefined;
 let upToDate = false;
+let upToDateTimer: ReturnType<typeof setTimeout> | undefined;
 function renderUpdate(state: UpdateState): void {
   updateState = state;
   element('app-updates').dataset.status = state.status;
@@ -45,7 +46,10 @@ function renderUpdate(state: UpdateState): void {
   };
   status.textContent = labels[state.status] || '';
   // Only a manual check confirms "up to date"; any later state change clears it.
-  if (state.status !== 'idle') upToDate = false;
+  if (state.status !== 'idle') {
+    upToDate = false;
+    clearTimeout(upToDateTimer);
+  }
   else if (upToDate) status.textContent = 'Y-Term is up to date';
   status.hidden = !status.textContent;
   button.hidden = !busy && state.status !== 'available' && state.status !== 'error';
@@ -64,8 +68,15 @@ element<HTMLButtonElement>('update-check').onclick = () => {
   element<HTMLButtonElement>('update-check').disabled = true;
   // Use the returned state: the reply may arrive before or after the state events.
   void window.terminal.checkForUpdates().then(state => {
+    clearTimeout(upToDateTimer);
     upToDate = state.status === 'idle';
     renderUpdate(state);
+    if (upToDate) {
+      upToDateTimer = setTimeout(() => {
+        upToDate = false;
+        if (updateState) renderUpdate(updateState);
+      }, 5000);
+    }
   }, () => {
     if (updateState) renderUpdate({ ...updateState, status: 'error', message: 'Could not check for updates.' });
   });
