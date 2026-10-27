@@ -5,6 +5,7 @@ import { mkdtemp, mkdir, writeFile, rm, symlink, chmod, realpath } from 'node:fs
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { GitService, parseGitStatus } from '../src/main/git.ts';
+import { buildDiffRows } from '../src/renderer/git-diff.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }, stdio: ['ignore', 'pipe', 'pipe'] }).toString();
 async function fixture(t: test.TestContext) {
@@ -111,6 +112,7 @@ test('parses NUL rename records, submodules, and unsupported filename encodings'
     { path: 'new name', section: 'unstaged', kind: 'modified' },
   ]);
   assert.equal(parsed.at(-1)?.kind, 'unsupported-path');
+  assert.equal(parseGitStatus(Buffer.from('R  new\0\uFEFFold\0'))[0].originalPath, '\uFEFFold');
 });
 
 test('summarizes tracked binaries, non-UTF-8 content and dirty submodules', async t => {
@@ -129,6 +131,36 @@ test('summarizes tracked binaries, non-UTF-8 content and dirty submodules', asyn
     const result = await service.diff(1, root, 'unstaged', path);
     assert.equal(result.kind, 'summary'); if (result.kind === 'summary') assert.equal(result.reason, reason);
   }
+});
+
+test('preserves a leading BOM in filenames and untracked source text', async t => {
+  const root = await fixture(t);
+  await writeFile(join(root, 'a'), 'normal before\n');
+  await writeFile(join(root, '\uFEFFa'), 'bom before\n');
+  git(root, 'add', '.'); git(root, 'commit', '-qm', 'base');
+  await writeFile(join(root, 'a'), 'normal after\n');
+  await writeFile(join(root, '\uFEFFa'), 'bom after\n');
+  await writeFile(join(root, 'new'), '\uFEFFsource\n');
+  const status = await service.status(1, root);
+  assert.equal(status.kind, 'ready');
+  if (status.kind === 'ready') assert.deepEqual(status.entries.map(e => e.path).sort(), ['a', 'new', '\uFEFFa'].sort());
+  const result = await service.diff(1, root, 'unstaged', '\uFEFFa');
+  assert.equal(result.kind, 'patch');
+  if (result.kind === 'patch') { assert.match(result.patch, /\+bom after/); assert.doesNotMatch(result.patch, /normal after/); }
+  const untracked = await service.diff(1, root, 'unstaged', 'new');
+  assert.equal(untracked.kind, 'untracked');
+  if (untracked.kind === 'untracked') assert.equal(untracked.content, '\uFEFFsource\n');
+});
+
+test('forces prefixed blank context lines despite diff.suppressBlankEmpty user configuration', async t => {
+  const root = await fixture(t);
+  await writeFile(join(root, 'file'), 'before\n\nlast\n'); git(root, 'add', '.'); git(root, 'commit', '-qm', 'base');
+  git(root, 'config', 'diff.suppressBlankEmpty', 'true');
+  await writeFile(join(root, 'file'), 'after\n\nlast\n');
+  const result = await service.diff(1, root, 'unstaged', 'file');
+  assert.equal(result.kind, 'patch');
+  const rows = buildDiffRows(result);
+  assert.ok(rows.some(row => row.kind === 'context' && row.left?.text === '' && row.right?.text === ''));
 });
 
 test('handles missing Git, output limits, timeout and owner disposal explicitly', async t => {

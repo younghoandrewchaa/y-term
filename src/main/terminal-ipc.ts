@@ -26,23 +26,23 @@ export function registerTerminalIpc(manager: SessionManager, preferences: Prefer
   ipcMain.handle('git:status', async (event, id): Promise<GitStatusResult> => {
     const ownerId = owner(event);
     let cwd: string | undefined;
-    try { cwd = directory(ownerId, id); }
+    try { cwd = await directory(ownerId, id); }
     catch (error) {
       if (error instanceof Error && /shell has exited/.test(error.message)) return { kind: 'unavailable', reason: 'session-ended', message: error.message };
       throw error;
     }
     if (!cwd) return { kind: 'unavailable', reason: 'directory-unavailable', message: 'Cannot determine this terminal’s current directory.' };
     const result = await git.status(ownerId, cwd);
-    if (directory(ownerId, id) !== cwd) return { kind: 'unavailable', reason: 'directory-unavailable', message: 'The terminal directory changed. Refresh to try again.' };
+    if (await directory(ownerId, id) !== cwd) return { kind: 'unavailable', reason: 'directory-unavailable', message: 'The terminal directory changed. Refresh to try again.' };
     return result;
   });
   ipcMain.handle('git:diff', async (event, id, section, path): Promise<GitDiffResult> => {
     const ownerId = owner(event);
     if (!['unstaged', 'staged'].includes(section) || typeof path !== 'string' || path.length > 32768) throw new Error('Invalid Git file request.');
-    const cwd = directory(ownerId, id);
+    const cwd = await directory(ownerId, id);
     if (!cwd) return { kind: 'summary', reason: 'stale', message: 'Cannot determine this terminal’s current directory.' };
     const result = await git.diff(ownerId, cwd, section, path);
-    if (directory(ownerId, id) !== cwd) return { kind: 'summary', reason: 'stale', message: 'The terminal directory changed. Refresh to try again.' };
+    if (await directory(ownerId, id) !== cwd) return { kind: 'summary', reason: 'stale', message: 'The terminal directory changed. Refresh to try again.' };
     return result;
   });
   ipcMain.handle('updates:get', event => { owner(event); return updates.getState(); });

@@ -116,7 +116,7 @@ void app.whenReady().then(() => {
   }, (owner, event) => {
     const contents = webContents.fromId(owner);
     if (contents && !contents.isDestroyed()) contents.send('terminal:event', event);
-  }, terminatePty, shellCurrentDirectory);
+  }, terminatePty, shellCurrentDirectory, shellCurrentDirectoryAsync);
   updates = new UpdateManager({
     version: app.getVersion(),
     enabled: app.isPackaged && process.platform === 'darwin' && process.arch === 'arm64' && !process.env.Y_TERM_TEST_DATA,

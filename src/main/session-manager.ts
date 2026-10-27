@@ -32,12 +32,16 @@ export class SessionManager {
   private sessions = new Map<string, Session>();
   private spawn: (size: Dimensions, cwd?: string) => PtyProcess;
   private currentDirectory: (pid: number) => string | undefined;
+  private readDirectory: (pid: number) => Promise<string | undefined>;
   private notify: (owner: number, event: TerminalEvent) => void;
   private terminate: (pty: PtyProcess) => void;
 
-  constructor(spawn: (size: Dimensions, cwd?: string) => PtyProcess, notify: (owner: number, event: TerminalEvent) => void, terminate: (pty: PtyProcess) => void, currentDirectory: (pid: number) => string | undefined = () => undefined) {
+  constructor(spawn: (size: Dimensions, cwd?: string) => PtyProcess, notify: (owner: number, event: TerminalEvent) => void, terminate: (pty: PtyProcess) => void,
+    currentDirectory: (pid: number) => string | undefined = () => undefined,
+    readDirectory: (pid: number) => Promise<string | undefined> = async pid => currentDirectory(pid)) {
     this.spawn = spawn; this.notify = notify; this.terminate = terminate;
     this.currentDirectory = currentDirectory;
+    this.readDirectory = readDirectory;
   }
 
   create(owner: number, size: Dimensions, sourceId?: string): string {
@@ -126,10 +130,13 @@ export class SessionManager {
     return this.sessions.size;
   }
 
-  directoryFor(owner: number, id: string): string | undefined {
+  async directoryFor(owner: number, id: string): Promise<string | undefined> {
     const session = this.owned(owner, id);
     if (session.ended) throw new Error('The shell has exited. Open a new tab.');
-    return this.currentDirectory(session.pty.pid);
+    const cwd = await this.readDirectory(session.pty.pid);
+    this.owned(owner, id);
+    if (session.ended) throw new Error('The shell has exited. Open a new tab.');
+    return cwd;
   }
 
   directory(owner: number, id: string): string | undefined {

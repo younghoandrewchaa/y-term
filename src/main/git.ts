@@ -8,7 +8,7 @@ import type { GitDiffResult, GitEntry, GitSection, GitStatusResult } from '../sh
 const STATUS_LIMIT = 4 * 1024 * 1024;
 const DIFF_LIMIT = 2 * 1024 * 1024;
 const conflicts = new Set(['DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU']);
-const utf8 = new TextDecoder('utf-8', { fatal: true });
+const utf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 type FailureReason = 'not-repository' | 'git-missing' | 'too-large' | 'timeout' | 'error';
 class GitFailure extends Error {
   readonly reason: FailureReason;
@@ -72,6 +72,7 @@ export class GitService {
       Object.assign(env, { GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0' });
       const child = spawn(this.options.executable ?? 'git', [
         '--no-pager', '--literal-pathspecs', '-c', 'core.fsmonitor=false', '-c', 'core.untrackedCache=false',
+        '-c', 'diff.suppressBlankEmpty=false',
         ...args,
       ], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
       running.add(child); this.processes.set(owner, running);
