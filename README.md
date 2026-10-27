@@ -2,6 +2,8 @@
 
 A macOS terminal built with Electron, xterm.js, and local pseudoterminals. The initial distribution target is Apple Silicon.
 
+Project website: <https://younghoandrewchaa.github.io/y-term/> (source in `site/`, deployed to GitHub Pages by `.github/workflows/pages.yml` on pushes to `main`).
+
 ## Develop
 
 Use Node.js 24.13 or later, npm, and Apple's Xcode Command Line Tools (`xcode-select --install`). Native dependency installation needs access to the npm registry and Electron downloads.
