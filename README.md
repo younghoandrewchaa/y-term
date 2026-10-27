@@ -27,12 +27,6 @@ Drag the sidebar’s right edge to resize it; the app remembers your width acros
 
 New tabs inherit the active shell’s current working directory. The configured starting directory is used for the first tab, or if the active shell’s directory is unavailable.
 
-Click **Changes** in the session header, or press **⇧⌘G**, to review the active shell’s Git repository. Select a changed file to see old and new code side by side. **Unstaged** compares the index with the working tree and includes untracked files; **Staged** compares HEAD with the index. A partially staged file appears in both views. This panel is read-only; use the terminal for staging, discarding, and committing.
-
-Changes refresh while the panel is visible and the window has focus, two seconds after each read completes. Use Refresh for an immediate check. The panel follows tab and directory changes. Wide windows keep the terminal beside the panel; Expand uses the workspace for review. Smaller windows open the review across the workspace, with horizontal scrolling when needed. Escape inside the panel closes it and returns focus to the live terminal.
-
-The panel requires system Git. It displays diff hunks with three context lines, without syntax highlighting. Binary files, merge conflicts, submodules, and unsupported encodings show summaries. Reads stop after five seconds, status output is limited to 4 MiB, selected-file content/patches to 2 MiB, and rendering to 10,000 rows. Untracked symbolic-link targets are not read.
-
 - ⌘T creates a tab; ⌘W closes the current tab and immediately terminates its shell and child programs. Control-Tab or ⇧⌘] switches to the next tab; Control-Shift-Tab or ⇧⌘[ switches to the previous tab.
 - ⌘C and ⌘V copy and paste using the macOS Edit menu. Control-C remains the shell interrupt key. Multiline paste asks for confirmation.
 - Shift+Enter inserts a newline in terminal agents that support modified Enter (CSI u). Enter submits as usual.
@@ -41,6 +35,7 @@ The panel requires system Git. It displays diff hunks with three context lines, 
 - ⌘F searches the active terminal; Enter and Shift-Enter move between matches; Escape closes search.
 - ⌘+ / ⌘− change font size, ⌘0 resets it, and ⌘K clears the display.
 - ⌘-click or Control-click opens HTTP/HTTPS links in your browser and local file paths in their default macOS app. Relative paths use the terminal session's current directory; quoted paths with spaces and local `file:` hyperlinks are supported.
+- ⌘-click a file with uncommitted Git changes, such as a path in `git status` output, to open a diff in VS Code. Unstaged changes are compared with the staged version (or HEAD if nothing is staged); staged-only changes are compared with HEAD. Paths with a line number (`file.ts:42`), untracked, newly added and conflicted files open normally. ⌥⌘-click always opens the file itself. Requires the VS Code `code` command (on PATH, in `/usr/local/bin` or `/opt/homebrew/bin`, or inside `/Applications/Visual Studio Code.app`); without it, files open normally. The previous version is a read-only temporary copy that is removed when Y-Term quits.
 - ⌘, opens settings. Font, theme, and scrollback apply immediately. Shell and initial directory changes apply to new tabs.
 
 Settings and window placement are stored in `preferences.json` inside Electron's macOS user-data directory (`~/Library/Application Support/Y-Term`). Invalid or corrupt files recover with defaults. Terminal output and credentials are not saved. Quitting ends shells; reopening creates fresh ones.
@@ -55,7 +50,6 @@ npm run typecheck
 npm run test:pty
 npm run test:e2e
 npm run test:updates
-npm run test:git
 npm run package
 npm run test:packaged
 npm run make

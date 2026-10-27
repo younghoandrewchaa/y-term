@@ -123,7 +123,6 @@ h3 { font-size: 17px; margin: 0 0 8px; }
 .win-version { margin-top: auto; padding: 0 8px; font-size: 11px; color: var(--muted); }
 .win-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .win-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--bright); }
-.pill { margin-left: auto; padding: 3px 10px; border: 1px solid var(--control-border); border-radius: 7px; font-size: 12px; }
 .win-term { flex: 1; margin: 0; padding: 16px; font-size: 12.5px; line-height: 1.55; overflow: hidden; }
 .win-term .p { color: var(--accent); }
 .win-term .g { color: var(--green); }

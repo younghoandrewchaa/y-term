@@ -9,42 +9,16 @@ import type { UpdateManager } from './updates.ts';
 import { homedir } from 'node:os';
 import { openFileLink } from './file-links.ts';
 import type { GitService } from './git.ts';
-import type { GitDiffResult, GitStatusResult } from '../shared/git-protocol.ts';
+import type { VsCodeDiff } from './vscode-diff.ts';
 
 export function registerTerminalIpc(manager: SessionManager, preferences: PreferencesStore, documentUrl: string, updates: UpdateManager,
-  badge: AttentionBadge, notify: (sender: WebContents, tab: string, title: string, body: string) => void, git: GitService): void {
+  badge: AttentionBadge, notify: (sender: WebContents, tab: string, title: string, body: string) => void, git: GitService, vscode: VsCodeDiff): void {
   function owner(event: IpcMainEvent | IpcMainInvokeEvent): number {
     if (!BrowserWindow.fromWebContents(event.sender) || !isTrustedFrame(event.senderFrame?.url, documentUrl, event.senderFrame === event.sender.mainFrame)) {
       throw new Error('Untrusted terminal request.');
     }
     return event.sender.id;
   }
-  const directory = (ownerId: number, id: unknown) => {
-    if (typeof id !== 'string' || id.length > 128) throw new Error('Invalid terminal session.');
-    return manager.directoryFor(ownerId, id);
-  };
-  ipcMain.handle('git:status', async (event, id): Promise<GitStatusResult> => {
-    const ownerId = owner(event);
-    let cwd: string | undefined;
-    try { cwd = await directory(ownerId, id); }
-    catch (error) {
-      if (error instanceof Error && /shell has exited/.test(error.message)) return { kind: 'unavailable', reason: 'session-ended', message: error.message };
-      throw error;
-    }
-    if (!cwd) return { kind: 'unavailable', reason: 'directory-unavailable', message: 'Cannot determine this terminal’s current directory.' };
-    const result = await git.status(ownerId, cwd);
-    if (await directory(ownerId, id) !== cwd) return { kind: 'unavailable', reason: 'directory-unavailable', message: 'The terminal directory changed. Refresh to try again.' };
-    return result;
-  });
-  ipcMain.handle('git:diff', async (event, id, section, path): Promise<GitDiffResult> => {
-    const ownerId = owner(event);
-    if (!['unstaged', 'staged'].includes(section) || typeof path !== 'string' || path.length > 32768) throw new Error('Invalid Git file request.');
-    const cwd = await directory(ownerId, id);
-    if (!cwd) return { kind: 'summary', reason: 'stale', message: 'Cannot determine this terminal’s current directory.' };
-    const result = await git.diff(ownerId, cwd, section, path);
-    if (await directory(ownerId, id) !== cwd) return { kind: 'summary', reason: 'stale', message: 'The terminal directory changed. Refresh to try again.' };
-    return result;
-  });
   ipcMain.handle('updates:get', event => { owner(event); return updates.getState(); });
   ipcMain.handle('updates:check', async event => { owner(event); await updates.check(true); return updates.getState(); });
   ipcMain.handle('updates:install', event => { owner(event); return updates.install(); });
@@ -65,9 +39,17 @@ export function registerTerminalIpc(manager: SessionManager, preferences: Prefer
     if (!isSafeExternalUrl(value)) throw new Error('Only HTTP and HTTPS links can be opened.');
     await shell.openExternal(value);
   });
-  ipcMain.handle('terminal:open-file', async (event, id, value) => {
-    const cwd = manager.directory(owner(event), id);
-    await openFileLink(value, cwd, homedir(), path => shell.openPath(path));
+  ipcMain.handle('terminal:open-file', async (event, id, value, plain) => {
+    const ownerId = owner(event);
+    const cwd = manager.directory(ownerId, id);
+    // Any Git or VS Code failure falls back to opening the file itself.
+    const diff = async (path: string) => {
+      try {
+        const baseline = await git.baseline(ownerId, path);
+        return !!baseline && await vscode.open(path, baseline.label, baseline.content);
+      } catch (error) { console.error('Could not open diff:', error); return false; }
+    };
+    await openFileLink(value, cwd, homedir(), path => shell.openPath(path), plain === true ? undefined : diff);
   });
   const listen = (channel: string, handler: (event: IpcMainEvent, ...args: any[]) => void) => {
     ipcMain.on(channel, (event, ...args) => {

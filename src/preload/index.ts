@@ -4,8 +4,6 @@ import type { MenuAction, TerminalAPI, TerminalEvent } from '../shared/terminal-
 import type { UpdateState } from '../shared/update-protocol.ts';
 
 const api: TerminalAPI = {
-  getGitStatus: id => ipcRenderer.invoke('git:status', id),
-  getGitDiff: (id, section, path) => ipcRenderer.invoke('git:diff', id, section, path),
   getUpdateState: () => ipcRenderer.invoke('updates:get'),
   checkForUpdates: () => ipcRenderer.invoke('updates:check'),
   installUpdate: () => ipcRenderer.invoke('updates:install'),
@@ -34,7 +32,7 @@ const api: TerminalAPI = {
   getPreferences: () => ipcRenderer.invoke('preferences:get'),
   savePreferences: value => ipcRenderer.invoke('preferences:save', value),
   openLink: url => ipcRenderer.invoke('terminal:open-link', url),
-  openFile: (id, path) => ipcRenderer.invoke('terminal:open-file', id, path),
+  openFile: (id, path, plain = false) => ipcRenderer.invoke('terminal:open-file', id, path, plain),
   setAttentionCount: count => ipcRenderer.send('attention:count', count),
   notifyAttention: (tab, title, body) => ipcRenderer.send('attention:notify', tab, title, body),
   onAttentionActivate: listener => {

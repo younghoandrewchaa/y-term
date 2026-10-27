@@ -1,5 +1,4 @@
 import type { UpdateState } from './update-protocol.ts';
-import type { GitDiffResult, GitSection, GitStatusResult } from './git-protocol.ts';
 
 export interface Disposable { dispose(): void }
 export interface PtyProcess {
@@ -30,10 +29,8 @@ export interface Preferences {
   sidebarWidth?: number;
   bounds?: WindowBounds;
 }
-export type MenuAction = 'new-tab' | 'close-tab' | 'find' | 'settings' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'clear' | 'next-tab' | 'previous-tab' | 'toggle-changes' | 'toggle-sidebar';
+export type MenuAction = 'new-tab' | 'close-tab' | 'find' | 'settings' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'clear' | 'next-tab' | 'previous-tab' | 'toggle-sidebar';
 export interface TerminalAPI {
-  getGitStatus(id: string): Promise<GitStatusResult>;
-  getGitDiff(id: string, section: GitSection, path: string): Promise<GitDiffResult>;
   getUpdateState(): Promise<UpdateState>;
   checkForUpdates(): Promise<UpdateState>;
   installUpdate(): Promise<void>;
@@ -50,7 +47,8 @@ export interface TerminalAPI {
   getPreferences(): Promise<Preferences>;
   savePreferences(value: Preferences): Promise<Preferences>;
   openLink(url: string): Promise<void>;
-  openFile(id: string, path: string): Promise<void>;
+  /** Opens a VS Code diff for files with Git changes unless `plain` is set. */
+  openFile(id: string, path: string, plain?: boolean): Promise<void>;
   setAttentionCount(count: number): void;
   notifyAttention(tab: string, title: string, body: string): void;
   onAttentionActivate(listener: (tab: string) => void): () => void;
