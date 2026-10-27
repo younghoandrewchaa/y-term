@@ -1,7 +1,7 @@
 {
   "name": "y-term",
   "productName": "Y-Term",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "A focused macOS terminal built with Electron and xterm.js",
   "private": true,
   "type": "module",
