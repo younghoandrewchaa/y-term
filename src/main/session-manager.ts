@@ -126,6 +126,16 @@ export class SessionManager {
     return this.sessions.size;
   }
 
+  directory(owner: number, id: string): string | undefined {
+    const session = this.owned(owner, id);
+    const cwd = session.ended ? undefined : this.currentDirectory(session.pty.pid);
+    if (cwd && cwd !== session.cwd) {
+      session.cwd = cwd;
+      this.deliver(session, { type: 'directory', id, cwd });
+    }
+    return session.cwd;
+  }
+
   async refreshDirectories(read: (pid: number) => Promise<string | undefined>): Promise<void> {
     await Promise.all([...this.sessions].map(async ([id, session]) => {
       if (session.ended) return;

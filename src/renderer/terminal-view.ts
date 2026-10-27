@@ -8,6 +8,7 @@ import type { Preferences } from '../shared/terminal-protocol.ts';
 import { TerminalSession } from './terminal-session.ts';
 import { attachTerminalFileDrop } from './file-drop.ts';
 import { attachTerminalImagePaste } from './image-paste.ts';
+import { createFileLinkProvider } from './file-links.ts';
 
 // macOS line-editing shortcuts translated to readline control characters.
 const COMMAND_KEY_INPUT: Record<string, string> = {
@@ -30,17 +31,24 @@ export class TerminalView {
 
   constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, directory: (cwd: string) => void, agent: (name?: string) => void, attention: (signal: AttentionSignal) => void) {
     this.host = host;
+    const activateFile = (event: MouseEvent, path: string) => {
+      if ((event.metaKey || event.ctrlKey) && this.session.id) {
+        void window.terminal.openFile(this.session.id, path).catch(error => status(String(error)));
+      }
+    };
     const activateLink = (event: MouseEvent, uri: string) => {
-      if (event.metaKey || event.ctrlKey) void window.terminal.openLink(uri).catch(error => status(String(error)));
+      if (/^file:/i.test(uri)) activateFile(event, uri);
+      else if (event.metaKey || event.ctrlKey) void window.terminal.openLink(uri).catch(error => status(String(error)));
     };
     this.terminal = new Terminal({
       cursorBlink: true, allowProposedApi: false,
-      linkHandler: { activate: activateLink },
+      linkHandler: { activate: activateLink, allowNonHttpProtocols: true },
     });
     this.apply(preferences);
     this.terminal.loadAddon(this.fitAddon);
     this.terminal.loadAddon(this.search);
     this.terminal.loadAddon(new WebLinksAddon(activateLink));
+    this.terminal.registerLinkProvider(createFileLinkProvider(this.terminal, activateFile));
     this.terminal.open(host);
     this.session = new TerminalSession(window.terminal, {
       write: (data, processed) => this.terminal.write(data, processed),

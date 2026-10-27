@@ -3,6 +3,25 @@ import assert from 'node:assert/strict';
 import { SessionManager } from '../src/main/session-manager.ts';
 import type { PtyProcess, TerminalEvent } from '../src/shared/terminal-protocol.ts';
 
+test('file links use the owned session live directory and retain it after exit', async () => {
+  const pty = new FakePty();
+  let cwd: string | undefined = '/first';
+  const events: TerminalEvent[] = [];
+  const manager = new SessionManager(() => pty, (_owner, event) => events.push(event), () => {}, () => cwd);
+  const id = manager.create(1, { cols: 80, rows: 24 });
+  manager.ready(1, id);
+  assert.equal(manager.directory(1, id), '/first');
+  cwd = '/after-cd';
+  assert.equal(manager.directory(1, id), '/after-cd');
+  assert.deepEqual(events, [{ type: 'directory', id, cwd: '/first' }, { type: 'directory', id, cwd: '/after-cd' }]);
+  assert.throws(() => manager.directory(2, id), /session/i);
+  pty.exit({ exitCode: 0 });
+  cwd = '/reused-pid';
+  assert.equal(manager.directory(1, id), '/after-cd');
+  manager.close(1, id);
+  assert.throws(() => manager.directory(1, id), /session/i);
+});
+
 class FakePty implements PtyProcess {
   pid = 123;
   writes: (string | Buffer)[] = [];

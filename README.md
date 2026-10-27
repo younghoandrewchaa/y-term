@@ -31,7 +31,7 @@ New tabs inherit the active shell’s current working directory. The configured 
 - Drag files or folders from Finder into a terminal to insert their quoted absolute paths. Multiple items become separate arguments followed by a space; press Enter yourself to run the command. Paths containing control characters (including tabs and newlines) are rejected.
 - ⌘F searches the active terminal; Enter and Shift-Enter move between matches; Escape closes search.
 - ⌘+ / ⌘− change font size, ⌘0 resets it, and ⌘K clears the display.
-- ⌘-click or Control-click activates HTTP/HTTPS links. Other URL schemes are rejected by the main process.
+- ⌘-click or Control-click opens HTTP/HTTPS links in your browser and local file paths in their default macOS app. Relative paths use the terminal session's current directory; quoted paths with spaces and local `file:` hyperlinks are supported.
 - ⌘, opens settings. Font, theme, and scrollback apply immediately. Shell and initial directory changes apply to new tabs.
 
 Settings and window placement are stored in `preferences.json` inside Electron's macOS user-data directory (`~/Library/Application Support/Y-Term`). Invalid or corrupt files recover with defaults. Terminal output and credentials are not saved. Quitting ends shells; reopening creates fresh ones.
