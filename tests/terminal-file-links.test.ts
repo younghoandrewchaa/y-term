@@ -31,9 +31,9 @@ test('finds paths in Codex prose and excludes surrounding Markdown punctuation',
 });
 
 test('recognises quoted spaces, home and absolute paths, filenames, and line suffixes', async () => {
-  const f = await fixture('"docs/my plan.md" \'/tmp/my file.md\' ~/plan.md /tmp/plan.md README.md src/app.ts:12:4.');
+  const f = await fixture('"docs/my plan.md" \'/tmp/my file.md\' ~/plan.md /tmp/plan.md README.md src/app.ts:12:4. (v2/runner.py:1272-1346): notes.md:3-9');
   try {
-    assert.deepEqual(f.links().map(link => link.text), ['docs/my plan.md', '/tmp/my file.md', '~/plan.md', '/tmp/plan.md', 'README.md', 'src/app.ts:12:4']);
+    assert.deepEqual(f.links().map(link => link.text), ['docs/my plan.md', '/tmp/my file.md', '~/plan.md', '/tmp/plan.md', 'README.md', 'src/app.ts:12:4', 'v2/runner.py:1272-1346', 'notes.md:3-9']);
   } finally { f.terminal.dispose(); }
 });
 

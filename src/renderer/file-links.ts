@@ -39,8 +39,8 @@ export function createFileLinkProvider(terminal: Pick<Terminal, 'buffer' | 'cols
         const raw = quoted ?? match[0];
         const leading = quoted === undefined ? raw.match(/^\*+/)?.[0].length ?? 0 : 0;
         const path = quoted ?? raw.slice(leading).replace(/[.,;:!?*]+$/, '');
-        if (!path || (/^[a-z][a-z\d+.-]*:/i.test(path) && !/^file:\/\//i.test(path) && !/^[^/:]+:\d+(?::\d+)?$/.test(path))) continue;
-        if (!path.includes('/') && !/^[^\s/:]+\.[\p{L}\d][\p{L}\d._-]*(?::\d+(?::\d+)?)?$/u.test(path)) continue;
+        if (!path || (/^[a-z][a-z\d+.-]*:/i.test(path) && !/^file:\/\//i.test(path) && !/^[^/:]+:\d+(?:[:-]\d+)?$/.test(path))) continue;
+        if (!path.includes('/') && !/^[^\s/:]+\.[\p{L}\d][\p{L}\d._-]*(?::\d+(?:[:-]\d+)?)?$/u.test(path)) continue;
         const index = match.index + (quoted === undefined ? leading : 1);
         const start = starts[index];
         const end = ends[index + path.length - 1];

@@ -56,7 +56,11 @@ export function registerTerminalIpc(manager: SessionManager, preferences: Prefer
         return !!baseline && await vscode.open(path, baseline.label, baseline.content);
       } catch (error) { console.error('Could not open diff:', error); return false; }
     };
-    await openFileLink(value, cwd, homedir(), path => shell.openPath(path), plain === true ? undefined : diff);
+    const locate = async (path: string) => {
+      try { return cwd ? await git.locate(ownerId, cwd, path) : undefined; }
+      catch (error) { console.error('Could not search for file:', error); return undefined; }
+    };
+    await openFileLink(value, cwd, homedir(), path => shell.openPath(path), plain === true ? undefined : diff, locate);
   });
   const listen = (channel: string, handler: (event: IpcMainEvent, ...args: any[]) => void) => {
     ipcMain.on(channel, (event, ...args) => {

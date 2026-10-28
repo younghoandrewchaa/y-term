@@ -87,3 +87,20 @@ test('parses NUL rename records, submodules, and unsupported filename encodings'
   assert.equal(parsed.at(-1)?.kind, 'unsupported-path');
   assert.equal(parseGitStatus(Buffer.from('R  new\0\uFEFFold\0'))[0].originalPath, '\uFEFFold');
 });
+
+test('locates a uniquely matching tracked or unignored file below a directory', async t => {
+  const root = await fixture(t);
+  for (const dir of ['app/v2/lib', 'other/v2/lib', 'app/v3']) await mkdir(join(root, dir), { recursive: true });
+  for (const path of ['app/v2/lib/runner.py', 'other/v2/lib/runner.py', 'app/v3/only.py']) await writeFile(join(root, path), '');
+  await writeFile(join(root, '.gitignore'), 'ignored.py\n'); await writeFile(join(root, 'app/ignored.py'), '');
+  git(root, 'add', 'app/v2'); git(root, 'commit', '-qm', 'base');
+  assert.equal(await service.locate(1, join(root, 'app'), 'v2/lib/runner.py'), join(root, 'app/v2/lib/runner.py'));
+  assert.equal(await service.locate(1, root, 'v2/lib/runner.py'), undefined);
+  assert.equal(await service.locate(1, root, 'only.py'), join(root, 'app/v3/only.py'));
+  assert.equal(await service.locate(1, root, 'v3/only.py'), join(root, 'app/v3/only.py'));
+  assert.equal(await service.locate(1, root, 'ly.py'), undefined);
+  assert.equal(await service.locate(1, root, 'ignored.py'), undefined);
+  const outside = await realpath(await mkdtemp(join(tmpdir(), 'y-term-no-git-')));
+  t.after(() => rm(outside, { recursive: true, force: true }));
+  assert.equal(await service.locate(1, outside, 'runner.py'), undefined);
+});

@@ -105,6 +105,18 @@ export class GitService {
     });
   }
 
+  /** Finds the one tracked or unignored file below `cwd` whose path ends with `suffix`; undefined if none or several match. */
+  async locate(owner: number, cwd: string, suffix: string): Promise<string | undefined> {
+    let output: Buffer;
+    try { output = await this.run(owner, cwd, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], BASELINE_LIMIT); }
+    catch (error) { if (error instanceof GitFailure && error.reason === 'not-repository') return undefined; throw error; }
+    const matches = new Set<string>();
+    for (const path of output.toString('utf8').split('\0')) {
+      if (path === suffix || path.endsWith(`/${suffix}`)) matches.add(path);
+    }
+    return matches.size === 1 ? join(cwd, [...matches][0]) : undefined;
+  }
+
   /** Returns undefined for files that are unchanged, untracked, conflicted, newly added, or outside a repository. */
   async baseline(owner: number, file: string): Promise<GitBaseline | undefined> {
     if (!isAbsolute(file)) return undefined;
