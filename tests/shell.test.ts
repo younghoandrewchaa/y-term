@@ -6,7 +6,8 @@ import { realpathSync } from 'node:fs';
 import { defaultPreferences } from '../src/main/preferences.ts';
 
 test('reads the live working directory from a local process and ignores invalid processes', () => {
-  assert.equal(shellCurrentDirectory(process.pid), realpathSync(process.cwd()));
+  // A generous timeout keeps this about lsof parsing, not machine load.
+  assert.equal(shellCurrentDirectory(process.pid, 10_000), realpathSync(process.cwd()));
   for (const pid of [0, -1, 1.5, NaN, 2147483647]) assert.equal(shellCurrentDirectory(pid), undefined);
 });
 

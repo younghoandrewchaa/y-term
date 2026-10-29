@@ -169,7 +169,7 @@ test('reports PTY startup failures without retaining a broken session', () => {
   assert.throws(() => manager.create(1, { cols: 80, rows: 24 }), /shell missing/);
 });
 
-test('inherits the live directory of the selected session and enforces window ownership', () => {
+test('inherits the live directory of the selected session and enforces window ownership', async () => {
   const directories: (string | undefined)[] = [];
   const ptys: FakePty[] = [];
   let cwd: string | undefined = '/private/tmp/first';
@@ -184,9 +184,11 @@ test('inherits the live directory of the selected session and enforces window ow
   assert.throws(() => manager.create(2, { cols: 80, rows: 24 }, first), /session/i);
   cwd = undefined;
   manager.create(1, { cols: 80, rows: 24 }, first);
+  await manager.refreshDirectories(async pids => new Map(pids.map(pid => [pid, '/private/tmp/polled'])));
+  manager.create(1, { cols: 80, rows: 24 }, first);
   ptys[0].exit({ exitCode: 0 });
   manager.create(1, { cols: 80, rows: 24 }, first);
-  assert.deepEqual(directories, [undefined, '/private/tmp/first', '/private/tmp/after-cd', undefined, undefined]);
+  assert.deepEqual(directories, [undefined, '/private/tmp/first', '/private/tmp/after-cd', undefined, '/private/tmp/polled', undefined]);
 });
 
 test('reports agents starting and stopping and keeps state when the process snapshot fails', async () => {

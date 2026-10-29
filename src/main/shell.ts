@@ -48,12 +48,12 @@ export function usableDirectory(path: unknown): path is string {
   catch { return false; }
 }
 
-/** Query the shell itself so this also works without shell integration hooks. */
-export function shellCurrentDirectory(pid: number): string | undefined {
+/** Query the shell itself so this also works without shell integration hooks. Blocks the caller, so keep the timeout short. */
+export function shellCurrentDirectory(pid: number, timeout = 1000): string | undefined {
   if (!Number.isSafeInteger(pid) || pid <= 1) return undefined;
   try {
     const output = execFileSync('/usr/sbin/lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-F0n'], {
-      encoding: 'utf8', timeout: 1000, maxBuffer: 64 * 1024, stdio: ['ignore', 'pipe', 'ignore'],
+      encoding: 'utf8', timeout, maxBuffer: 64 * 1024, stdio: ['ignore', 'pipe', 'ignore'],
     });
     return directoryFromLsof(output);
   } catch { return undefined; }

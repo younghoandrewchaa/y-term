@@ -50,8 +50,9 @@ export class SessionManager {
       throw new Error('Close a tab before opening another (maximum 32 tabs).');
     }
     const source = sourceId === undefined ? undefined : this.owned(owner, sourceId);
-    // A source tab wins; the spawner decides whether a requested directory is usable.
-    const pty = this.spawn(size, source ? (source.ended ? undefined : this.currentDirectory(source.pty.pid)) : cwd);
+    // A source tab wins, falling back to its last polled directory if the lookup times out;
+    // the spawner decides whether a requested directory is usable.
+    const pty = this.spawn(size, source ? (source.ended ? undefined : this.currentDirectory(source.pty.pid) ?? source.cwd) : cwd);
     const id = randomUUID();
     const session: Session = {
       owner, pty, ready: false, ended: false, paused: false, sequence: 0,
