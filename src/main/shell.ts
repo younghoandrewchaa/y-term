@@ -6,15 +6,34 @@ import type { Dimensions, Preferences, PtyProcess } from '../shared/terminal-pro
 
 const execFileAsync = promisify(execFile);
 
-/** Poll without blocking terminal input while lsof inspects the shell. */
-export async function shellCurrentDirectoryAsync(pid: number): Promise<string | undefined> {
-  if (!Number.isSafeInteger(pid) || pid <= 1) return undefined;
+/**
+ * One lsof for every shell: concurrent per-tab lookups contend and outlast any
+ * sensible timeout once a few tabs are open, which froze the sidebar directories.
+ */
+export async function shellCurrentDirectoriesAsync(pids: number[]): Promise<Map<number, string>> {
+  const valid = pids.filter(pid => Number.isSafeInteger(pid) && pid > 1);
+  if (!valid.length) return new Map();
+  let stdout: string;
   try {
-    const { stdout } = await execFileAsync('/usr/sbin/lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-F0n'], {
-      encoding: 'utf8', timeout: 1000, maxBuffer: 64 * 1024,
-    });
-    return directoryFromLsof(stdout);
-  } catch { return undefined; }
+    ({ stdout } = await execFileAsync('/usr/sbin/lsof', ['-a', '-p', valid.join(','), '-d', 'cwd', '-F0pn'], {
+      encoding: 'utf8', timeout: 5000, maxBuffer: 1024 * 1024,
+    }));
+  } catch (error) {
+    // lsof exits non-zero when any one shell has gone, yet still reports the rest.
+    stdout = typeof (error as { stdout?: unknown }).stdout === 'string' ? (error as { stdout: string }).stdout : '';
+  }
+  return directoriesFromLsof(stdout);
+}
+
+/** Parses `-F0pn` output: a `p<pid>` field precedes that process's `n<path>` field. */
+export function directoriesFromLsof(output: string): Map<number, string> {
+  const directories = new Map<number, string>();
+  let pid: number | undefined;
+  for (const field of output.split(/[\0\n]/)) {
+    if (field.startsWith('p')) pid = Number(field.slice(1));
+    else if (field.startsWith('n') && pid !== undefined && !directories.has(pid) && usableDirectory(field.slice(1))) directories.set(pid, field.slice(1));
+  }
+  return directories;
 }
 
 function directoryFromLsof(output: string): string | undefined {

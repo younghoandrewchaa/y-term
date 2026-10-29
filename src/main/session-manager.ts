@@ -162,14 +162,17 @@ export class SessionManager {
     return session.cwd;
   }
 
-  async refreshDirectories(read: (pid: number) => Promise<string | undefined>): Promise<void> {
-    await Promise.all([...this.sessions].map(async ([id, session]) => {
-      if (session.ended) return;
-      const cwd = await read(session.pty.pid);
-      if (!cwd || session.ended || this.sessions.get(id) !== session || cwd === session.cwd) return;
+  /** One batched lookup for every live shell; missing entries keep the previous directory. */
+  async refreshDirectories(read: (pids: number[]) => Promise<Map<number, string>>): Promise<void> {
+    const live = [...this.sessions].filter(([, session]) => !session.ended);
+    if (!live.length) return;
+    const directories = await read(live.map(([, session]) => session.pty.pid));
+    for (const [id, session] of live) {
+      const cwd = directories.get(session.pty.pid);
+      if (!cwd || session.ended || this.sessions.get(id) !== session || cwd === session.cwd) continue;
       session.cwd = cwd;
       this.deliver(session, { type: 'directory', id, cwd });
-    }));
+    }
   }
 
   async refreshAgents(read: () => Promise<((pid: number) => string | undefined) | undefined>): Promise<void> {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { agentName, agentOf, agentProcessOf, buildShellLaunch, descendantsOf, shellCurrentDirectory, usableDirectory } from '../src/main/shell.ts';
+import { agentName, agentOf, agentProcessOf, buildShellLaunch, descendantsOf, directoriesFromLsof, shellCurrentDirectoriesAsync, shellCurrentDirectory, usableDirectory } from '../src/main/shell.ts';
 import { tmpdir } from 'node:os';
 import { realpathSync } from 'node:fs';
 import { defaultPreferences } from '../src/main/preferences.ts';
@@ -8,6 +8,18 @@ import { defaultPreferences } from '../src/main/preferences.ts';
 test('reads the live working directory from a local process and ignores invalid processes', () => {
   assert.equal(shellCurrentDirectory(process.pid), realpathSync(process.cwd()));
   for (const pid of [0, -1, 1.5, NaN, 2147483647]) assert.equal(shellCurrentDirectory(pid), undefined);
+});
+
+test('reads every live working directory in one lookup, keeping the rest when a process has gone', async () => {
+  const cwd = realpathSync(process.cwd());
+  assert.deepEqual(await shellCurrentDirectoriesAsync([process.pid, 2147483647, 0, 1.5]), new Map([[process.pid, cwd]]));
+  assert.deepEqual(await shellCurrentDirectoriesAsync([]), new Map());
+});
+
+test('parses lsof process and name fields, ignoring unusable directories', () => {
+  const tmp = realpathSync(tmpdir());
+  const output = `p10\0\nfcwd\0n${tmp}\0\np20\0\nfcwd\0n/no/such/directory\0\np30\0\nfcwd\0n/\0\n`;
+  assert.deepEqual(directoriesFromLsof(output), new Map([[10, tmp], [30, '/']]));
 });
 
 test('starts the configured login shell at home with a terminal environment', () => {
