@@ -4,7 +4,7 @@
 
 **Goal:** Show Working, Blocked, Done, and Idle for agents that explicitly report their status, with Done reserved for completions the user has not seen.
 
-**Architecture:** Follow Herdr's separation of OSC 7501 reports from the user's attention state. Parse reports through the existing terminal OSC handler, reduce them into per-tab state, and render that state in the sidebar. Reuse the existing attention infrastructure for notifications without treating a generic bell as a lifecycle report.
+**Architecture:** Follow Herdr's separation of OSC 7501 reports from the user's attention state. Parse reports through the existing terminal OSC handler, reduce them into per-tab state, and render that state in the sidebar. Reuse existing attention infrastructure. A narrow native window-activity bridge determines whether the window is actually in front of the user.
 
 **Tech Stack:** Existing TypeScript, xterm.js, Electron, node:test, and Playwright; no new dependencies.
 
@@ -23,7 +23,7 @@
 
 Proposed decisions:
 
-- A tab is being viewed when it is selected, its document is visible, its window has focus, and no modal dialog covers the terminal.
+- A tab is being viewed when it is selected, its document is visible, its native window is visible and focused, and no modal dialog covers the terminal.
 - A transition from Working or Blocked to reported Idle or Done is completion. Completion while being viewed goes directly to Idle; elsewhere it becomes Done until viewed or superseded by new work or a block. An initial Idle/Done report without a previous busy state shows Idle, matching Herdr's local attention rules.
 - Selecting a Done tab, returning focus to its window, or closing an obscuring dialog acknowledges its completion once it is being viewed.
 - Viewing or typing into a Blocked tab does not change its status. Only a new report changes it to Working or Idle; a completion report follows the Done rules.
@@ -67,7 +67,7 @@ Use Herdr's OSC 7501 Program Status Protocol: colon-separated key/value fields s
 - Create `scripts/agent-status-smoke.ts` and call it from `scripts/smoke.ts`: exercise the real parser, sidebar, focus, and notifications.
 - Modify `README.md`: meanings, reporting contract, and integration limits.
 
-No new preload or main-process IPC is needed: status reports arrive through existing terminal output, and badge/notification requests already exist.
+Status reports arrive through existing terminal output, and badge/notification requests already exist. Implementation adds `getWindowActivity()` / `onWindowActivity()` to the preload bridge and a trusted `window:activity` channel: Electron testing demonstrated that document focus/visibility could remain true while the native window was hidden.
 
 ### Task 1: Define and test the status contract
 

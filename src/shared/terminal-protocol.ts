@@ -35,6 +35,8 @@ export interface RestoredTab { cwd?: string; resume?: AgentResume }
 export interface RestoredTabs { tabs: RestoredTab[]; active: number }
 export type MenuAction = 'new-tab' | 'close-tab' | 'find' | 'settings' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'clear' | 'next-tab' | 'previous-tab' | 'toggle-sidebar';
 export interface TerminalAPI {
+  getWindowActivity(): Promise<boolean>;
+  onWindowActivity(listener: (active: boolean) => void): () => void;
   getUpdateState(): Promise<UpdateState>;
   checkForUpdates(): Promise<UpdateState>;
   installUpdate(): Promise<void>;

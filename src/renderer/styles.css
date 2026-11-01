@@ -67,6 +67,12 @@ kbd { font: inherit; font-size: 11px; color: var(--muted); }
 .tab-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .tab-label, .tab-directory { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .tab-directory { color: var(--muted); font-size: 11px; font-weight: 400; }
+.tab-meta { display: flex; min-width: 0; font-size: 11px; font-weight: 400; }
+.tab-agent-status { flex-shrink: 0; white-space: pre; color: var(--muted); }
+.tab-agent-status::before { content: ' · '; color: var(--muted); }
+.tab[data-agent-status=working] .tab-agent-status { color: var(--accent); }
+.tab[data-agent-status=blocked] .tab-agent-status { color: var(--attention); }
+.tab[data-agent-status=done] .tab-agent-status { color: var(--green); }
 .tab-close { position: absolute; right: 4px; border: 0; padding: 0; width: 24px; height: 24px; color: var(--muted); font-size: 18px; opacity: 0; }
 .tab:hover .tab-close, .tab:focus-within .tab-close { opacity: 1; }
 .tab-close:hover { color: var(--bright); background: var(--control-border); }

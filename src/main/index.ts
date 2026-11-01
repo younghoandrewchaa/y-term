@@ -70,6 +70,11 @@ function createWindow(restore?: RestoreWindow): void {
     },
   });
   const owner = window.webContents.id;
+  const publishActivity = () => {
+    if (!window.webContents.isDestroyed()) window.webContents.send('window:activity', window.isFocused() && window.isVisible() && !window.isMinimized());
+  };
+  window.on('focus', publishActivity).on('blur', publishActivity).on('show', publishActivity)
+    .on('hide', publishActivity).on('minimize', publishActivity).on('restore', publishActivity);
   if (restore) restores.set(owner, { tabs: restore.tabs, active: restore.active });
   const release = () => { manager.closeOwner(owner); attention.clear(owner); git.disposeOwner(owner); restores.delete(owner); };
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
