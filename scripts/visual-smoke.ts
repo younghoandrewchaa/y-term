@@ -75,8 +75,13 @@ export async function verifyVisualDesign(application: ElectronApplication, page:
   assert.equal(await page.locator('[aria-selected=true] svg').count(), 1);
   assert.equal(await page.locator('.tab-label markup').count(), 0);
   await resize(640, 400);
+  // The viewport can update before the resize handler clamps the sidebar width.
+  await page.waitForFunction(() => {
+    const box = document.querySelector('[role=tabpanel]:not([hidden]) .terminal-host')?.getBoundingClientRect();
+    return !!box && box.width >= 400 && box.height >= 280;
+  });
   const smallTerminal = await page.locator('[role=tabpanel]:not([hidden]) .terminal-host').boundingBox();
-  assert.ok(smallTerminal && smallTerminal.width >= 400 && smallTerminal.height >= 280);
+  assert.ok(smallTerminal && smallTerminal.width >= 400 && smallTerminal.height >= 280, `Minimum-size terminal bounds: ${JSON.stringify(smallTerminal)}`);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth === innerWidth), true);
   await screenshot('minimum-size');
 

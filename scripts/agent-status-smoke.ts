@@ -128,9 +128,15 @@ print('YTERM_7501_QUERY_OK')`;
     await emit(id, 'state=working'); await state(agent, 'working');
     // Initial process detection preserves a report; removal clears an established agent.
     await application.evaluate(({ BrowserWindow }, id) => {
-      BrowserWindow.getAllWindows()[0].webContents.send('terminal:event', { type: 'agent', id, agent: 'Codex' });
+      BrowserWindow.getAllWindows()[0].webContents.send('terminal:event', { type: 'agent', id, agent: 'Codex', agentPid: 200 });
     }, id);
     assert.equal(await agent.getAttribute('data-agent-status'), 'working');
+    await emit(id, 'state=blocked'); await state(agent, 'blocked');
+    await application.evaluate(({ BrowserWindow }, id) => {
+      BrowserWindow.getAllWindows()[0].webContents.send('terminal:event', { type: 'agent', id, agent: 'Codex', agentPid: 300 });
+    }, id);
+    await state(agent, null); await badge('');
+    await emit(id, 'state=working'); await state(agent, 'working');
     await application.evaluate(({ BrowserWindow }, id) => {
       BrowserWindow.getAllWindows()[0].webContents.send('terminal:event', { type: 'agent', id });
     }, id);

@@ -26,7 +26,7 @@ const settings = element<HTMLDialogElement>('settings');
 const settingsForm = element<HTMLFormElement>('settings-form');
 const findBar = element('find-bar');
 const findInput = element<HTMLInputElement>('find-input');
-interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string; agent?: string; attention: boolean; agentStatus: AgentStatusState; statusLabel: HTMLElement; lastStatusNotification: number }
+interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string; agent?: string; agentPid?: number; attention: boolean; agentStatus: AgentStatusState; statusLabel: HTMLElement; lastStatusNotification: number }
 const tabs: Tab[] = [];
 let active: Tab | undefined;
 let preferences: Preferences;
@@ -230,9 +230,10 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
     directory.textContent = directoryName(cwd);
     groupTabs();
     if (active === tab) updateHeader();
-  }, agent => {
-    if (tab.agent && tab.agent !== agent) updateAgentStatus(tab, { type: 'reset' });
+  }, (agent, agentPid) => {
+    if (tab.agent && (tab.agent !== agent || tab.agentPid !== agentPid)) updateAgentStatus(tab, { type: 'reset' });
     tab.agent = agent;
+    tab.agentPid = agentPid;
     const icon = element<HTMLTemplateElement>(agent ? 'agent-icon' : 'session-icon').content.cloneNode(true) as DocumentFragment;
     if (agent) icon.querySelector('svg')?.setAttribute('aria-label', `${agent} running`);
     button.querySelector('svg')?.replaceWith(icon);

@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { UpdateState } from '../src/shared/update-protocol.ts';
+import { closeSmokeApplication } from './smoke-cleanup.ts';
 
 const directory = await mkdtemp(join(tmpdir(), 'y-term-update-'));
 const application = await electron.launch({ args: ['.'], env: { ...process.env, Y_TERM_TEST_DATA: directory } });
@@ -85,6 +86,6 @@ try {
   await second.close();
   console.log('PASS: sidebar version, manual check, update notice, click, busy states, retries, both themes and multiple windows; no real downloads.');
 } finally {
-  await application.close();
+  await closeSmokeApplication(application);
   await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 }

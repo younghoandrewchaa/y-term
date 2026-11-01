@@ -14,10 +14,11 @@ export interface PtyProcess {
 }
 
 export interface Dimensions { cols: number; rows: number }
+export interface AgentProcess { name: string; pid: number }
 export type TerminalEvent =
   | { type: 'data'; id: string; sequence: number; data: string }
   | { type: 'directory'; id: string; cwd: string }
-  | { type: 'agent'; id: string; agent?: string }
+  | { type: 'agent'; id: string; agent?: string; agentPid?: number }
   | { type: 'exit'; id: string; exitCode: number; signal?: number; error?: string };
 export interface WindowBounds { x: number; y: number; width: number; height: number }
 export interface Preferences {

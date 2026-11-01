@@ -2,7 +2,7 @@ import { accessSync, constants, statSync } from 'node:fs';
 import { basename, isAbsolute } from 'node:path';
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { Dimensions, Preferences, PtyProcess } from '../shared/terminal-protocol.ts';
+import type { AgentProcess, Dimensions, Preferences, PtyProcess } from '../shared/terminal-protocol.ts';
 
 const execFileAsync = promisify(execFile);
 
@@ -115,7 +115,7 @@ export function agentOf(parent: number, snapshot: string): string | undefined {
 }
 
 /** The outermost agent below the shell, so tools an agent runs never mask the agent itself. */
-export function agentProcessOf(parent: number, snapshot: string): { name: string; pid: number } | undefined {
+export function agentProcessOf(parent: number, snapshot: string): AgentProcess | undefined {
   const commands = new Map(snapshot.trim().split('\n').map(line => {
     const [, pid, command] = /^\s*(\d+)\s+\d+\s+(.*)$/.exec(line) ?? [];
     return [Number(pid), command ?? ''] as const;
@@ -129,12 +129,12 @@ export function agentProcessOf(parent: number, snapshot: string): { name: string
 }
 
 /** One process snapshot serves every tab; undefined keeps the previous state on failure. */
-export async function runningAgentsAsync(): Promise<((pid: number) => string | undefined) | undefined> {
+export async function runningAgentsAsync(): Promise<((pid: number) => AgentProcess | undefined) | undefined> {
   try {
     const { stdout } = await execFileAsync('/bin/ps', ['-axo', 'pid=,ppid=,args='], {
       encoding: 'utf8', timeout: 1000, maxBuffer: 16 * 1024 * 1024,
     });
-    return pid => agentOf(pid, stdout);
+    return pid => agentProcessOf(pid, stdout);
   } catch { return undefined; }
 }
 

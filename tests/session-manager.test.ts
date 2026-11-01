@@ -195,17 +195,30 @@ test('reports agents starting and stopping and keeps state when the process snap
   const { manager, ptys, events } = setup();
   const id = manager.create(1, { cols: 80, rows: 24 });
   manager.ready(1, id);
-  await manager.refreshAgents(async () => pid => pid === 123 ? 'Claude' : undefined);
-  await manager.refreshAgents(async () => () => 'Claude');
+  await manager.refreshAgents(async () => pid => pid === 123 ? { name: 'Claude', pid: 200 } : undefined);
+  await manager.refreshAgents(async () => () => ({ name: 'Claude', pid: 200 }));
   await manager.refreshAgents(async () => undefined);
-  assert.deepEqual(events, [{ type: 'agent', id, agent: 'Claude' }], 'unchanged or unknown state emits nothing');
+  assert.deepEqual(events, [{ type: 'agent', id, agent: 'Claude', agentPid: 200 }], 'unchanged or unknown state emits nothing');
   await manager.refreshAgents(async () => () => undefined);
   assert.deepEqual(events.at(-1), { type: 'agent', id });
-  await manager.refreshAgents(async () => () => 'Codex');
+  await manager.refreshAgents(async () => () => ({ name: 'Codex', pid: 300 }));
   ptys[0].exit({ exitCode: 0 });
   events.length = 0;
-  await manager.refreshAgents(async () => () => 'Codex');
+  await manager.refreshAgents(async () => () => ({ name: 'Codex', pid: 300 }));
   assert.deepEqual(events, [{ type: 'agent', id }], 'an exited shell clears its agent');
+});
+
+test('reports same-brand replacement so the new process cannot inherit stale status', async () => {
+  const { manager, events } = setup();
+  const id = manager.create(1, { cols: 80, rows: 24 });
+  manager.ready(1, id);
+  await manager.refreshAgents(async () => () => ({ name: 'Codex', pid: 200 }));
+  await manager.refreshAgents(async () => () => ({ name: 'Codex', pid: 200 }));
+  await manager.refreshAgents(async () => () => ({ name: 'Codex', pid: 300 }));
+  assert.deepEqual(events, [
+    { type: 'agent', id, agent: 'Codex', agentPid: 200 },
+    { type: 'agent', id, agent: 'Codex', agentPid: 300 },
+  ]);
 });
 
 test('starts in a requested directory unless a source tab is given', () => {

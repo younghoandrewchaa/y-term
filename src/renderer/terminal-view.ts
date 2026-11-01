@@ -31,7 +31,7 @@ export class TerminalView {
   private removeImagePaste: () => void;
   private host: HTMLElement;
 
-  constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, directory: (cwd: string) => void, agent: (name?: string) => void, attention: (signal: AttentionSignal) => void, agentStatus: (report: AgentReport) => void, ended: () => void) {
+  constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, directory: (cwd: string) => void, agent: (name?: string, pid?: number) => void, attention: (signal: AttentionSignal) => void, agentStatus: (report: AgentReport) => void, ended: () => void) {
     this.host = host;
     const activateFile = (event: MouseEvent, path: string) => {
       if ((event.metaKey || event.ctrlKey) && this.session.id) {
