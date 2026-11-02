@@ -24,7 +24,8 @@ module.exports = {
       osxSign: {
         ...(process.env.APPLE_SIGN_IDENTITY ? { identity: process.env.APPLE_SIGN_IDENTITY } : {}),
         // Locale data is sealed by the framework signature; skip individual signatures.
-        ignore: [/\/Resources\/[^/]+\.lproj\/locale\.pak$/],
+        // osx-sign 1.3.3 drops array-valued ignore options during validation.
+        ignore: /\/Resources\/[^/]+\.lproj\/locale\.pak$/,
       },
       ...(release || (process.env.APPLE_ID && applePassword && process.env.APPLE_TEAM_ID) ? {
         osxNotarize: notarization,
