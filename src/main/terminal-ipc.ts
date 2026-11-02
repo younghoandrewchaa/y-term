@@ -20,6 +20,11 @@ export function registerTerminalIpc(manager: SessionManager, preferences: Prefer
     }
     return event.sender.id;
   }
+  ipcMain.handle('window:activity', event => {
+    owner(event);
+    const window = BrowserWindow.fromWebContents(event.sender);
+    return !!window && window.isFocused() && window.isVisible() && !window.isMinimized();
+  });
   ipcMain.handle('updates:get', event => { owner(event); return updates.getState(); });
   ipcMain.handle('updates:check', async event => { owner(event); await updates.check(true); return updates.getState(); });
   ipcMain.handle('updates:install', event => { owner(event); return updates.install(); });

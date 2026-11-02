@@ -10,6 +10,8 @@ import { verifyVisualDesign } from './visual-smoke.ts';
 import { verifySidebarResize } from './sidebar-smoke.ts';
 import { verifySessionDirectories } from './directory-smoke.ts';
 import { verifyAttention } from './attention-smoke.ts';
+import { verifyAgentStatus } from './agent-status-smoke.ts';
+import { closeSmokeApplication } from './smoke-cleanup.ts';
 
 const directory = await mkdtemp(join(tmpdir(), 'y-term-smoke-'));
 const executablePath = process.env.Y_TERM_EXECUTABLE;
@@ -128,9 +130,10 @@ try {
   await verifyVisualDesign(application, page);
   await verifySidebarResize(application, page);
   await verifyAttention(application, page);
+  await verifyAgentStatus(application, page);
   assert.deepEqual(errors, []);
   console.log('PASS: shell commands, keyboard input, native image/text paste, file/folder drops, resize, independent tabs, closure, URL policy, sidebar layout, themes, search, empty state, and attention indicators.');
 } finally {
-  await application.close();
+  await closeSmokeApplication(application);
   await rm(directory, { recursive: true, force: true });
 }

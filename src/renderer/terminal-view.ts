@@ -9,6 +9,8 @@ import { TerminalSession } from './terminal-session.ts';
 import { attachTerminalFileDrop } from './file-drop.ts';
 import { attachTerminalImagePaste } from './image-paste.ts';
 import { createFileLinkProvider } from './file-links.ts';
+import { parseAgentStatus } from '../shared/agent-status.ts';
+import type { AgentReport } from '../shared/agent-status.ts';
 
 // macOS line-editing shortcuts translated to readline control characters.
 const COMMAND_KEY_INPUT: Record<string, string> = {
@@ -29,7 +31,7 @@ export class TerminalView {
   private removeImagePaste: () => void;
   private host: HTMLElement;
 
-  constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, directory: (cwd: string) => void, agent: (name?: string) => void, attention: (signal: AttentionSignal) => void) {
+  constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, directory: (cwd: string) => void, agent: (name?: string, pid?: number) => void, attention: (signal: AttentionSignal) => void, agentStatus: (report: AgentReport) => void, ended: () => void) {
     this.host = host;
     const activateFile = (event: MouseEvent, path: string) => {
       if ((event.metaKey || event.ctrlKey) && this.session.id) {
@@ -52,7 +54,7 @@ export class TerminalView {
     this.terminal.open(host);
     this.session = new TerminalSession(window.terminal, {
       write: (data, processed) => this.terminal.write(data, processed),
-      exited: message => { this.exited = true; this.terminal.options.disableStdin = true; status(message); },
+      exited: message => { this.exited = true; this.terminal.options.disableStdin = true; ended(); status(message); },
       directory,
       agent,
     });
@@ -98,6 +100,21 @@ export class TerminalView {
     this.terminal.onBell(() => attention({}));
     this.terminal.parser.registerOscHandler(9, data => { const signal = parseOsc9(data); if (signal) attention(signal); return true; });
     this.terminal.parser.registerOscHandler(777, data => { const signal = parseOsc777(data); if (signal) attention(signal); return true; });
+    this.terminal.parser.registerOscHandler(7501, data => {
+      if (this.disposed || this.exited) return true;
+      if (data === '?') {
+        // A fixed capability response is the only status data written back.
+        if (this.session.id) window.terminal.write(this.session.id, '\x1b]7501;?:states=idle,working,done,blocked,error:kinds=permission,question,auth\x1b\\');
+      } else {
+        const report = parseAgentStatus(data);
+        if (report) agentStatus(report);
+      }
+      return true;
+    });
+    this.terminal.parser.registerEscHandler({ final: 'c' }, () => {
+      if (!this.disposed) agentStatus({ state: 'clear', id: '' });
+      return false; // Let xterm perform its normal full terminal reset too.
+    });
     this.observer = new ResizeObserver(() => this.fit());
     this.observer.observe(host);
   }

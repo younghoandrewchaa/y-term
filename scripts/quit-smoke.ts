@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { closeSmokeApplication } from './smoke-cleanup.ts';
 
 for (const tabCount of [2, 1, 0]) {
   const directory = await mkdtemp(join(tmpdir(), 'y-term-quit-'));
@@ -55,7 +56,7 @@ for (const tabCount of [2, 1, 0]) {
     await application.evaluate(({ app }) => app.quit()).catch(() => {});
     await closed;
   } finally {
-    if (application.windows().length) await application.close();
+    if (application.windows().length) await closeSmokeApplication(application);
     await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 }

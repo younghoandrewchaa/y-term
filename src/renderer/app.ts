@@ -6,6 +6,8 @@ import type { AttentionSignal } from '../shared/attention.ts';
 import { AGENT_LABELS, resumeCommand } from '../shared/agent-resume.ts';
 import type { MenuAction, Preferences, RestoredTab } from '../shared/terminal-protocol.ts';
 import type { UpdateState } from '../shared/update-protocol.ts';
+import { agentStatusLabel, reduceAgentStatus } from '../shared/agent-status.ts';
+import type { AgentStatusEvent, AgentStatusState } from '../shared/agent-status.ts';
 
 // A file dropped outside a terminal must not navigate away from the app.
 for (const type of ['dragover', 'drop'] as const) {
@@ -24,11 +26,23 @@ const settings = element<HTMLDialogElement>('settings');
 const settingsForm = element<HTMLFormElement>('settings-form');
 const findBar = element('find-bar');
 const findInput = element<HTMLInputElement>('find-input');
-interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string; agent?: string; attention: boolean }
+interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string; agent?: string; agentPid?: number; attention: boolean; agentStatus: AgentStatusState; statusLabel: HTMLElement; lastStatusNotification: number }
 const tabs: Tab[] = [];
 let active: Tab | undefined;
 let preferences: Preferences;
 let counter = 0;
+let windowActive = false;
+let activityReceived = false;
+window.terminal.onWindowActivity(value => {
+  activityReceived = true;
+  windowActive = value;
+  if (active && isViewed(active)) clearAttention(active);
+});
+void window.terminal.getWindowActivity().then(value => {
+  if (activityReceived) return;
+  windowActive = value;
+  if (active && isViewed(active)) clearAttention(active);
+}).catch(report);
 
 let updateState: UpdateState | undefined;
 let upToDate = false;
@@ -115,26 +129,57 @@ function updateHeader(): void {
   element('session-count').textContent = String(tabs.length);
   element('empty-state').hidden = tabs.length > 0;
 }
-function publishAttention(): void { window.terminal.setAttentionCount(tabs.filter(tab => tab.attention).length); }
+function isViewed(tab: Tab): boolean {
+  return active === tab && windowActive && document.visibilityState === 'visible' && !document.querySelector('dialog[open]');
+}
+function hasAttention(tab: Tab): boolean {
+  const label = agentStatusLabel(tab.agentStatus);
+  return tab.attention || label === 'Blocked' || label === 'Done';
+}
+function publishAttention(): void { window.terminal.setAttentionCount(tabs.filter(hasAttention).length); }
+function renderTabStatus(tab: Tab): void {
+  const label = agentStatusLabel(tab.agentStatus);
+  tab.statusLabel.textContent = label ?? '';
+  tab.statusLabel.hidden = !label;
+  if (label) tab.wrapper.dataset.agentStatus = label.toLowerCase();
+  else delete tab.wrapper.dataset.agentStatus;
+  if (hasAttention(tab)) tab.wrapper.dataset.attention = 'true';
+  else delete tab.wrapper.dataset.attention;
+  const description = [label ? `Agent status: ${label}` : '', tab.attention ? 'Needs attention' : ''].filter(Boolean).join('. ');
+  if (description) tab.button.setAttribute('aria-description', description);
+  else tab.button.removeAttribute('aria-description');
+  publishAttention();
+}
+function updateAgentStatus(tab: Tab, event: AgentStatusEvent): void {
+  if (!tabs.includes(tab)) return;
+  const before = agentStatusLabel(tab.agentStatus);
+  tab.agentStatus = reduceAgentStatus(tab.agentStatus, event);
+  const label = agentStatusLabel(tab.agentStatus);
+  renderTabStatus(tab);
+  if (label !== before && (label === 'Blocked' || label === 'Done') && !isViewed(tab)) {
+    // A program can report at output speed; keep desktop notifications bounded.
+    const now = Date.now();
+    if (now - tab.lastStatusNotification < 1000) return;
+    tab.lastStatusNotification = now;
+    window.terminal.notifyAttention(tab.button.id, tab.label.textContent || 'Y-Term',
+      label === 'Blocked' ? `Waiting for you in ${directoryName(tab.cwd)}` : `Finished in ${directoryName(tab.cwd)}`);
+  }
+}
 // Main keeps the sidebar order so an update restart can reopen the same tabs.
 function publishLayout(): void {
   window.terminal.setLayout(tabs.flatMap(tab => tab.view.sessionId ?? []), active?.view.sessionId);
 }
 function needsAttention(tab: Tab, signal: AttentionSignal): void {
   // The user is already looking at it; repeated signals collapse until it is seen.
-  if ((tab === active && document.hasFocus()) || tab.attention) return;
+  if (!tabs.includes(tab) || isViewed(tab) || tab.attention) return;
   tab.attention = true;
-  tab.wrapper.dataset.attention = 'true';
-  tab.button.setAttribute('aria-description', 'Needs attention');
-  publishAttention();
+  renderTabStatus(tab);
   window.terminal.notifyAttention(tab.button.id, signal.title || tab.label.textContent || 'Y-Term', signal.body || `Needs your attention in ${directoryName(tab.cwd)}`);
 }
 function clearAttention(tab: Tab): void {
-  if (!tab.attention) return;
   tab.attention = false;
-  delete tab.wrapper.dataset.attention;
-  tab.button.removeAttribute('aria-description');
-  publishAttention();
+  if (isViewed(tab)) tab.agentStatus = reduceAgentStatus(tab.agentStatus, { type: 'viewed' });
+  renderTabStatus(tab);
 }
 function select(tab: Tab): void {
   active = tab;
@@ -159,9 +204,11 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   const button = document.createElement('button'); button.setAttribute('role', 'tab'); button.id = `tab-${n}`;
   const label = document.createElement('span'); label.className = 'tab-label'; label.textContent = `Shell ${n}`;
   const directory = document.createElement('span'); directory.className = 'tab-directory';
+  const statusLabel = document.createElement('span'); statusLabel.className = 'tab-agent-status'; statusLabel.hidden = true;
+  const meta = document.createElement('span'); meta.className = 'tab-meta'; meta.append(directory, statusLabel);
   const initialCwd = restore ? restore.cwd ?? preferences.cwd : active?.cwd || preferences.cwd;
   directory.textContent = directoryName(initialCwd);
-  const text = document.createElement('span'); text.className = 'tab-text'; text.append(label, directory);
+  const text = document.createElement('span'); text.className = 'tab-text'; text.append(label, meta);
   button.append(element<HTMLTemplateElement>('session-icon').content.cloneNode(true), text);
   const close = document.createElement('button'); close.className = 'tab-close'; close.textContent = '×'; close.setAttribute('aria-label', 'Close tab');
   const indicator = document.createElement('span'); indicator.className = 'tab-attention'; indicator.setAttribute('aria-hidden', 'true');
@@ -183,16 +230,20 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
     directory.textContent = directoryName(cwd);
     groupTabs();
     if (active === tab) updateHeader();
-  }, agent => {
+  }, (agent, agentPid) => {
+    if (tab.agent && (tab.agent !== agent || tab.agentPid !== agentPid)) updateAgentStatus(tab, { type: 'reset' });
     tab.agent = agent;
+    tab.agentPid = agentPid;
     const icon = element<HTMLTemplateElement>(agent ? 'agent-icon' : 'session-icon').content.cloneNode(true) as DocumentFragment;
     if (agent) icon.querySelector('svg')?.setAttribute('aria-label', `${agent} running`);
     button.querySelector('svg')?.replaceWith(icon);
     if (agent) wrapper.dataset.agent = agent;
     else delete wrapper.dataset.agent;
     if (active === tab) updateHeader();
-  }, signal => needsAttention(tab, signal));
-  const tab: Tab = { button, label, wrapper, panel, view, cwd: initialCwd, shell: preferences.shell.split('/').pop() || preferences.shell, attention: false }; tabs.push(tab);
+  }, signal => needsAttention(tab, signal), report => updateAgentStatus(tab, { type: 'report', report, viewed: isViewed(tab) }),
+  () => updateAgentStatus(tab, { type: 'reset' }));
+  const tab: Tab = { button, label, wrapper, panel, view, cwd: initialCwd, shell: preferences.shell.split('/').pop() || preferences.shell,
+    attention: false, agentStatus: { unseenCompletion: false }, statusLabel, lastStatusNotification: 0 }; tabs.push(tab);
   groupTabs();
   view.terminal.onData(() => clearAttention(tab));
   button.onclick = () => select(tab);
@@ -218,7 +269,7 @@ function closeTab(tab = active): void {
   if (!tab) return;
   const index = tabs.indexOf(tab); if (index === -1) return;
   tabs.splice(index, 1); tab.wrapper.remove(); tab.panel.remove();
-  if (tab.attention) publishAttention();
+  publishAttention();
   void tab.view.close().catch(report);
   publishLayout();
   if (active === tab) {
@@ -282,7 +333,7 @@ element('new-tab').onclick = () => { void newTab().catch(report); };
 element('empty-new-tab').onclick = () => { void newTab().catch(report); };
 element('settings-open').onclick = openSettings;
 element('settings-cancel').onclick = () => settings.close();
-settings.addEventListener('close', () => active?.view.focus());
+settings.addEventListener('close', () => { active?.view.focus(); if (active) clearAttention(active); });
 settingsForm.onsubmit = event => {
   event.preventDefault();
   const values = new FormData(settingsForm);
@@ -305,6 +356,7 @@ window.terminal.onAttentionActivate(id => {
   if (tab && !document.querySelector('dialog[open]')) select(tab);
 });
 window.addEventListener('focus', () => { if (active) clearAttention(active); });
+document.addEventListener('visibilitychange', () => { if (active && isViewed(active)) clearAttention(active); });
 window.addEventListener('beforeunload', () => {
   for (const tab of tabs) void tab.view.close();
   window.terminal.setAttentionCount(0);

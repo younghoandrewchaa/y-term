@@ -18,7 +18,9 @@ ESC ] 7501 ; state=blocked:kind=permission:id=a/b:msg=QXBwbHk/ BEL
 ESC ] 7501 ; state=clear ESC \
 ```
 
-States: idle, working, done, blocked, error, clear. Fields include id, app, kind, progress, title, and msg; text fields title/msg use base64 in core's encoder. No/empty id means the root record; named IDs are independent child records. Clear removes the specified record and its descendants; root clear removes everything. Tests also demonstrate a capability query (`OSC 7501;?`) and a response. The exact capability grammar still needs tracing in the pinned Ghostty parser before implementing interoperability.
+States: idle, working, done, blocked, error, clear. Fields include id, app, kind, progress, title, and msg; text fields title/msg use base64 in core's encoder. No id means the root record; named IDs are independent child records. An explicitly empty id is invalid. Clear removes the specified record and its descendants; root clear removes everything. Tests also demonstrate a capability query (`OSC 7501;?`) and a response.
+
+Implementation follow-up: traced the [pinned Ghostty parser](https://github.com/ghostty-org/ghostty/blob/1e5cdb865807abc990181efb8ebfa9122955cce2/src/terminal/osc/parsers/program_status.zig) and [protocol specification](https://www.superlogical.com/rex/docs/build/program-status). The query reply payload is `?:states=idle,working,done,blocked,error:kinds=permission,question,auth`. The public xterm callback supplies only the payload, so Y-Term replies using canonical ST termination. It implements root-label presentation; child records are consumed without replacing root status.
 
 ## Display and attention
 

@@ -3,6 +3,7 @@ import { _electron as electron } from 'playwright';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { closeSmokeApplication } from './smoke-cleanup.ts';
 
 const root = realpathSync(mkdtempSync(join(tmpdir(), 'y-term-restore-')));
 const data = join(root, 'data'), zdotdir = join(root, 'zdotdir'), output = join(root, 'claude-args');
@@ -33,13 +34,13 @@ try {
     const deadline = Date.now() + 10_000;
     while (!existsSync(output) && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 100));
     assert.equal(readFileSync(output, 'utf8').trim(), `${second} --resume ${id}`);
-  } finally { await application.close(); }
+  } finally { await closeSmokeApplication(application); }
 
   application = await electron.launch({ args: ['.'], env });
   try {
     const page = await application.firstWindow();
     await page.waitForFunction(() => document.querySelector('[role=tabpanel]')?.getAttribute('data-ready') === 'true');
     assert.equal(await page.getByRole('tab').count(), 1, 'a normal launch opens one fresh tab');
-  } finally { await application.close(); }
+  } finally { await closeSmokeApplication(application); }
   console.log('Restore smoke test passed.');
 } finally { rmSync(root, { recursive: true, force: true }); }

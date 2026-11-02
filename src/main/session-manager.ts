@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Dimensions, Disposable, PtyProcess, TerminalEvent } from '../shared/terminal-protocol.ts';
+import type { AgentProcess, Dimensions, Disposable, PtyProcess, TerminalEvent } from '../shared/terminal-protocol.ts';
 
 const HIGH_WATER = 128 * 1024;
 const LOW_WATER = 32 * 1024;
@@ -11,6 +11,7 @@ interface Session {
   owner: number;
   cwd?: string;
   agent?: string;
+  agentPid?: number;
   pty: PtyProcess;
   ready: boolean;
   ended: boolean;
@@ -176,14 +177,15 @@ export class SessionManager {
     }
   }
 
-  async refreshAgents(read: () => Promise<((pid: number) => string | undefined) | undefined>): Promise<void> {
+  async refreshAgents(read: () => Promise<((pid: number) => AgentProcess | undefined) | undefined>): Promise<void> {
     const agentOf = await read();
     if (!agentOf) return;
     for (const [id, session] of this.sessions) {
       const agent = session.ended ? undefined : agentOf(session.pty.pid);
-      if (agent === session.agent) continue;
-      session.agent = agent;
-      this.deliver(session, agent ? { type: 'agent', id, agent } : { type: 'agent', id });
+      if (agent?.name === session.agent && agent?.pid === session.agentPid) continue;
+      session.agent = agent?.name;
+      session.agentPid = agent?.pid;
+      this.deliver(session, agent ? { type: 'agent', id, agent: agent.name, agentPid: agent.pid } : { type: 'agent', id });
     }
   }
 

@@ -39,7 +39,8 @@ function sendAction(action: MenuAction): void {
 
 function notifyAttention(contents: WebContents, tab: string, title: string, body: string): void {
   const window = BrowserWindow.fromWebContents(contents);
-  if (!window || window.isFocused()) return;
+  // The renderer suppresses viewed tabs; a focused window can contain unseen tabs.
+  if (!window) return;
   app.dock?.bounce('informational');
   if (!Notification.isSupported()) return;
   const notification = new Notification({ title, body });
@@ -70,6 +71,11 @@ function createWindow(restore?: RestoreWindow): void {
     },
   });
   const owner = window.webContents.id;
+  const publishActivity = () => {
+    if (!window.webContents.isDestroyed()) window.webContents.send('window:activity', window.isFocused() && window.isVisible() && !window.isMinimized());
+  };
+  window.on('focus', publishActivity).on('blur', publishActivity).on('show', publishActivity)
+    .on('hide', publishActivity).on('minimize', publishActivity).on('restore', publishActivity);
   if (restore) restores.set(owner, { tabs: restore.tabs, active: restore.active });
   const release = () => { manager.closeOwner(owner); attention.clear(owner); git.disposeOwner(owner); restores.delete(owner); };
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));

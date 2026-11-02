@@ -4,6 +4,12 @@ import type { MenuAction, TerminalAPI, TerminalEvent } from '../shared/terminal-
 import type { UpdateState } from '../shared/update-protocol.ts';
 
 const api: TerminalAPI = {
+  getWindowActivity: () => ipcRenderer.invoke('window:activity'),
+  onWindowActivity: listener => {
+    const receive = (_event: IpcRendererEvent, active: boolean) => listener(active);
+    ipcRenderer.on('window:activity', receive);
+    return () => { ipcRenderer.removeListener('window:activity', receive); };
+  },
   getUpdateState: () => ipcRenderer.invoke('updates:get'),
   checkForUpdates: () => ipcRenderer.invoke('updates:check'),
   installUpdate: () => ipcRenderer.invoke('updates:install'),
