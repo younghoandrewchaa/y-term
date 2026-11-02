@@ -85,6 +85,7 @@ try {
     return [text.match(/YTERM_BEFORE:(\d+)\s+(\d+)/)?.slice(1), text.match(/YTERM_AFTER:(\d+)\s+(\d+)/)?.slice(1)];
   });
   assert.notDeepEqual(sizes[0], sizes[1], 'resizing must reach the actual PTY');
+  const firstTabId = await page.locator('[role=tab]').first().getAttribute('id');
   await page.getByRole('button', { name: 'New tab', exact: true }).click();
   await page.waitForFunction(() => document.querySelectorAll('[role=tab]').length === 2 && document.querySelector('[role=tabpanel]:not([hidden])')?.getAttribute('data-ready') === 'true');
   await page.locator('[role=tabpanel]:not([hidden]) .xterm-helper-textarea').focus();
@@ -100,7 +101,7 @@ try {
   await page.locator('.tab:has([aria-selected=true])').hover();
   await page.locator('.tab:has([aria-selected=true])').getByRole('button', { name: 'Close tab' }).click();
   await verifyFileDrops(application, page, directory);
-  await page.locator('[role=tab]').first().click();
+  await page.locator(`[id="${firstTabId}"]`).click();
   await page.locator('[role=tabpanel]:not([hidden]) .xterm-helper-textarea').focus();
   await page.keyboard.type("printf 'YTERM_%s\\n' 'FIRST_ALIVE'");
   await page.keyboard.press('Enter');
@@ -111,7 +112,7 @@ try {
   await page.waitForFunction(() => /YTERM_PID:\d+/.test((window as unknown as { smokeOutput: string }).smokeOutput));
   const childPid = await page.evaluate(() => Number((window as unknown as { smokeOutput: string }).smokeOutput.match(/YTERM_PID:(\d+)/)?.[1]));
   assert.ok(childPid > 1);
-  await page.getByRole('button', { name: 'Close tab' }).first().click();
+  await page.locator(`.tab:has([id="${firstTabId}"]) .tab-close`).click();
   const processEnded = async () => application.evaluate((_electron, pid) => {
     try { process.kill(pid, 0); return false; }
     catch (error) { return (error as NodeJS.ErrnoException).code === 'ESRCH'; }

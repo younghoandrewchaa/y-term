@@ -8,6 +8,7 @@ import type { MenuAction, Preferences, RestoredTab } from '../shared/terminal-pr
 import type { UpdateState } from '../shared/update-protocol.ts';
 import { agentStatusLabel, reduceAgentStatus } from '../shared/agent-status.ts';
 import type { AgentStatusEvent, AgentStatusState } from '../shared/agent-status.ts';
+import { compareTabs } from '../shared/tab-order.ts';
 
 // A file dropped outside a terminal must not navigate away from the app.
 for (const type of ['dragover', 'drop'] as const) {
@@ -107,19 +108,16 @@ element<HTMLButtonElement>('update-button').onclick = () => {
 
 function report(value: unknown): void { message.textContent = String(value); }
 function directoryName(cwd: string): string { return cwd.split('/').filter(Boolean).pop() || '/'; }
-function groupTabs(): void {
-  const groups = new Map<string, Tab[]>();
-  for (const tab of tabs) {
-    const name = directoryName(tab.cwd);
-    const group = groups.get(name);
-    if (group) group.push(tab);
-    else groups.set(name, [tab]);
-  }
-  tabs.splice(0, tabs.length, ...[...groups.values()].flat());
+function sortTabs(): void {
+  const key = (tab: Tab) => ({ directory: directoryName(tab.cwd), agent: Boolean(tab.agent) });
+  const before = active && tabs.indexOf(active);
+  tabs.sort((a, b) => compareTabs(key(a), key(b)));
   tabs.forEach((tab, index) => {
     const current = tablist.children[index];
     if (current !== tab.wrapper) tablist.insertBefore(tab.wrapper, current || null);
   });
+  // Moving tabs must not scroll the selected one out of view.
+  if (active && tabs.indexOf(active) !== before) active.button.scrollIntoView({ block: 'nearest' });
   publishLayout();
 }
 function updateHeader(): void {
@@ -228,12 +226,14 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   }, cwd => {
     tab.cwd = cwd;
     directory.textContent = directoryName(cwd);
-    groupTabs();
+    sortTabs();
     if (active === tab) updateHeader();
   }, (agent, agentPid) => {
     if (tab.agent && (tab.agent !== agent || tab.agentPid !== agentPid)) updateAgentStatus(tab, { type: 'reset' });
+    const agentChanged = Boolean(agent) !== Boolean(tab.agent);
     tab.agent = agent;
     tab.agentPid = agentPid;
+    if (agentChanged && tabs.includes(tab)) sortTabs();
     const icon = element<HTMLTemplateElement>(agent ? 'agent-icon' : 'session-icon').content.cloneNode(true) as DocumentFragment;
     if (agent) icon.querySelector('svg')?.setAttribute('aria-label', `${agent} running`);
     button.querySelector('svg')?.replaceWith(icon);
@@ -244,7 +244,7 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   () => updateAgentStatus(tab, { type: 'reset' }));
   const tab: Tab = { button, label, wrapper, panel, view, cwd: initialCwd, shell: preferences.shell.split('/').pop() || preferences.shell,
     attention: false, agentStatus: { unseenCompletion: false }, statusLabel, lastStatusNotification: 0 }; tabs.push(tab);
-  groupTabs();
+  sortTabs();
   view.terminal.onData(() => clearAttention(tab));
   button.onclick = () => select(tab);
   close.onclick = () => closeTab(tab);
