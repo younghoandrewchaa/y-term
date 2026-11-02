@@ -51,7 +51,10 @@ npm run typecheck
 ZIP_PATH="out/make/zip/darwin/arm64/${PRODUCT_NAME}-darwin-arm64-${VERSION}.zip"
 DMG_PATH="out/make/${PRODUCT_NAME}-darwin-arm64-${VERSION}.dmg"
 rm -f "$ZIP_PATH" "$DMG_PATH"
-Y_TERM_RELEASE=1 npm run make
+# Keep packaging progress visible, including native rebuilds and signing/notarization.
+# Preserve any extra debug namespaces supplied by the caller.
+DEBUG="${DEBUG:+${DEBUG},}electron-forge:*,electron-packager*,electron-rebuild*,electron-osx-sign*,electron-notarize*,@electron/get*" \
+  Y_TERM_RELEASE=1 npm run make
 if [ ! -s "$ZIP_PATH" ]; then
   echo "Build did not produce $ZIP_PATH" >&2
   exit 1
