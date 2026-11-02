@@ -53,7 +53,7 @@ export function reduceAgentStatus(state: AgentStatusState, event: AgentStatusEve
   if (event.report.id) return state;
   const word = event.report.state;
   if (word === 'clear') return { unseenCompletion: false };
-  const busy = state.reported?.state === 'working' || state.reported?.state === 'blocked';
+  const busy = state.reported?.state === 'working' || state.reported?.state === 'blocked' || state.reported?.state === 'error';
   const finished = word === 'idle' || word === 'done';
   const unseenCompletion = finished && (busy ? !event.viewed : state.unseenCompletion && !event.viewed);
   return { reported: event.report, unseenCompletion };

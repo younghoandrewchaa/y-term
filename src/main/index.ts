@@ -39,7 +39,8 @@ function sendAction(action: MenuAction): void {
 
 function notifyAttention(contents: WebContents, tab: string, title: string, body: string): void {
   const window = BrowserWindow.fromWebContents(contents);
-  if (!window || window.isFocused()) return;
+  // The renderer suppresses viewed tabs; a focused window can contain unseen tabs.
+  if (!window) return;
   app.dock?.bounce('informational');
   if (!Notification.isSupported()) return;
   const notification = new Notification({ title, body });

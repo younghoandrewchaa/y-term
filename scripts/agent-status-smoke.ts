@@ -5,9 +5,13 @@ import type { ElectronApplication, Page } from 'playwright';
 
 /** Real PTY output → xterm OSC parser → sidebar and attention state. */
 export async function verifyAgentStatus(application: ElectronApplication, page: Page): Promise<void> {
-  await application.evaluate(({ ipcMain }) => {
-    const state = { active: '', notifications: 0, listener: (_event: unknown, _ids: string[], active: string) => { state.active = active; },
+  await application.evaluate(({ ipcMain, Notification }) => {
+    const state = { active: '', notifications: 0, shown: [] as InstanceType<typeof Notification>[],
+      show: Notification.prototype.show, supported: Notification.isSupported, listener: (_event: unknown, _ids: string[], active: string) => { state.active = active; },
       notified: () => { state.notifications++; } };
+    // Observe delivery after main-process filtering, replacing only the OS boundary.
+    Notification.isSupported = () => true;
+    Notification.prototype.show = function () { state.shown.push(this); };
     (globalThis as any).agentStatusSmoke = state;
     ipcMain.on('session:layout', state.listener);
     ipcMain.on('attention:notify', state.notified);
@@ -69,12 +73,19 @@ print('YTERM_7501_QUERY_OK')`;
     const otherId = await activeId(); assert.notEqual(otherId, id);
     const otherTabId = await page.locator('.tab:has([aria-selected=true]) [role=tab]').getAttribute('id');
     const other = page.locator(`.tab:has(#${otherTabId})`);
+    await application.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; w.show(); w.focus(); });
+    await page.waitForFunction(() => document.hasFocus());
+    assert.equal(await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isFocused()), true);
     await emit(id, 'state=idle'); await state(agent, 'done'); await badge('1');
+    assert.equal(await application.evaluate(() => (globalThis as any).agentStatusSmoke.shown.length), 1,
+      'an unseen finish must reach Notification.show even in a focused window');
     const notices = await application.evaluate(() => (globalThis as any).agentStatusSmoke.notifications as number);
     await emit(id, 'state=done'); await emit(id, 'state=idle');
     await emit(otherId, 'state=idle'); await state(other, 'idle');
     assert.equal(await agent.getAttribute('data-agent-status'), 'done');
     assert.equal(await application.evaluate(() => (globalThis as any).agentStatusSmoke.notifications), notices);
+    assert.equal(await application.evaluate(() => (globalThis as any).agentStatusSmoke.shown.length), 1,
+      'duplicate completion reports must not repeat desktop notifications');
     await agent.locator('[role=tab]').click(); await state(agent, 'idle'); await badge('');
     await emit(id, 'state=done'); await emit(id, 'state=blocked'); await state(agent, 'blocked'); await badge('1');
     await command(id, ':');
@@ -83,6 +94,8 @@ print('YTERM_7501_QUERY_OK')`;
     assert.equal(await agent.getAttribute('data-agent-status'), 'blocked');
     await emit(id, 'state=working'); await state(agent, 'working'); await badge('');
     await emit(id, 'state=done'); await state(agent, 'idle');
+    assert.equal(await application.evaluate(() => (globalThis as any).agentStatusSmoke.shown.length), 1,
+      'viewed blocks and completions must not produce desktop notifications');
 
     // Child state/clear must never overwrite the root record.
     await emit(id, 'state=working'); await state(agent, 'working');
@@ -113,14 +126,18 @@ print('YTERM_7501_QUERY_OK')`;
       await page.locator('select[name=theme]').selectOption('dark');
       await page.getByRole('button', { name: 'Save', exact: true }).click();
     }
+    const delivered = await application.evaluate(() => (globalThis as any).agentStatusSmoke.shown.length as number);
     await emit(otherId, 'state=blocked'); await state(other, 'blocked'); await badge('2');
+    assert.equal(await application.evaluate(() => (globalThis as any).agentStatusSmoke.shown.length), delivered + 1,
+      'an unseen block must reach Notification.show even in a focused window');
     await command(otherId, "printf '\\033]777;notify;Reporter;Needs attention\\007'");
     await emit(id, 'state=clear'); await state(agent, null); await badge('1');
     assert.equal(await agent.locator('.tab-agent-status').isVisible(), false);
     await emit(otherId, 'state=done'); await state(other, 'done'); await badge('1');
-    await application.evaluate(({ BrowserWindow }, tabId) => {
-      BrowserWindow.getAllWindows()[0].webContents.send('attention:activate', tabId);
-    }, otherTabId);
+    await application.evaluate(() => {
+      // Exercise the real notification click handler, including target-tab activation.
+      (globalThis as any).agentStatusSmoke.shown.at(-1).emit('click');
+    });
     await state(other, 'idle'); await badge('');
     assert.equal(await other.locator('[role=tab]').getAttribute('aria-selected'), 'true');
     await emit(otherId, 'state=blocked'); await state(other, 'blocked'); await badge('1');
@@ -147,8 +164,11 @@ print('YTERM_7501_QUERY_OK')`;
     await command(id, 'exit'); await state(agent, null);
     await agent.hover(); await agent.getByRole('button', { name: 'Close tab' }).click();
   } finally {
-    await application.evaluate(({ ipcMain, BrowserWindow }) => {
+    await application.evaluate(({ ipcMain, BrowserWindow, Notification }) => {
       const state = (globalThis as any).agentStatusSmoke;
+      Notification.prototype.show = state.show;
+      Notification.isSupported = state.supported;
+      for (const notification of state.shown) notification.emit('close');
       ipcMain.removeListener('session:layout', state.listener);
       ipcMain.removeListener('attention:notify', state.notified);
       BrowserWindow.getAllWindows()[0]?.show();

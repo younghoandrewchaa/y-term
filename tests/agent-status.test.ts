@@ -59,7 +59,16 @@ test('viewing a blocked or errored agent does not resolve its status', () => {
     assert.equal(agentStatusLabel(reduceAgentStatus(blocked, { type: 'viewed' })), 'Blocked');
     assert.equal(agentStatusLabel(report('working', true, blocked)), 'Working');
   }
-  assert.equal(agentStatusLabel(report('done', false, report('blocked'))), 'Done');
+  for (const word of ['blocked', 'error'] as const) {
+    for (const finished of ['idle', 'done'] as const) {
+      const blocked = report(word, false, report('working'));
+      const completed = report(finished, false, blocked);
+      assert.equal(agentStatusLabel(completed), 'Done', `${word} → ${finished} elsewhere`);
+      assert.equal(agentStatusLabel(report(finished, true, blocked)), 'Idle');
+      const seen = reduceAgentStatus(completed, { type: 'viewed' });
+      assert.equal(agentStatusLabel(report(finished, false, seen)), 'Idle');
+    }
+  }
 });
 
 test('child reports do not replace root status, and clear/reset remove it', () => {
