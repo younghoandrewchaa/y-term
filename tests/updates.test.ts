@@ -1,29 +1,48 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { UpdateManager, selectRelease } from '../src/main/updates.ts';
+import { UpdateManager, selectRelease, fetchLatestRelease } from '../src/main/updates.ts';
 
 const base = 'https://github.com/younghoandrewchaa/y-term/releases/download/v0.2.0/';
 function release(version = '0.2.0') {
   const url = base.replace('0.2.0', version);
-  return { tag_name: `v${version}`, draft: false, prerelease: false, assets: [
-    { name: `Y-Term-darwin-arm64-${version}.zip`, browser_download_url: `${url}Y-Term-darwin-arm64-${version}.zip` },
-    { name: 'update-darwin-arm64.json', browser_download_url: `${url}update-darwin-arm64.json` },
-  ] };
+  return { currentRelease: version, releases: [{ version, updateTo: {
+    url: `${url}Y-Term-darwin-arm64-${version}.zip`,
+    name: `Y-Term ${version}`, notes: 'Release notes', pub_date: '2026-11-02T00:00:00Z',
+  } }] };
 }
 
-test('selects only a newer stable release with the correct architecture and trusted assets', () => {
+test('selects only a newer stable manifest with a matching version and trusted architecture asset', () => {
   assert.deepEqual(selectRelease(release(), '0.1.3'), { version: '0.2.0', feedUrl: `${base}update-darwin-arm64.json` });
   assert.equal(selectRelease(release('0.1.3'), '0.1.3'), undefined);
   assert.equal(selectRelease(release('0.1.2'), '0.1.3'), undefined);
   assert.ok(selectRelease(release('0.10.0'), '0.9.0'));
-  for (const value of [null, {}, { ...release(), draft: true }, { ...release(), prerelease: true }, release('0.2.0-beta.1'), { ...release(), assets: [] }]) {
+  for (const value of [null, {}, release('0.2.0-beta.1'), { ...release(), releases: [] },
+    { ...release(), currentRelease: '0.3.0' }, { currentRelease: '0.2.0', releases: [null, {}] }]) {
     assert.equal(selectRelease(value, '0.1.3'), undefined);
   }
-  const foreign = release(); foreign.assets[0].browser_download_url = 'https://example.com/update.zip';
-  assert.equal(selectRelease(foreign, '0.1.3'), undefined);
-  const wrongArch = release(); wrongArch.assets[0].name = 'Y-Term-darwin-x64-0.2.0.zip';
-  assert.equal(selectRelease(wrongArch, '0.1.3'), undefined);
+  for (const url of ['https://example.com/update.zip', `${base}Y-Term-darwin-x64-0.2.0.zip`,
+    base.replace('v0.2.0', 'v0.1.0') + 'Y-Term-darwin-arm64-0.2.0.zip']) {
+    const manifest = release(); manifest.releases[0].updateTo.url = url;
+    assert.equal(selectRelease(manifest, '0.1.3'), undefined);
+  }
+});
+
+test('checks through the website latest manifest download without GitHub API headers', async () => {
+  const manifest = release();
+  const result = await fetchLatestRelease(async (url, options) => {
+    assert.equal(url, 'https://github.com/younghoandrewchaa/y-term/releases/latest/download/update-darwin-arm64.json');
+    assert.deepEqual(options?.headers, { Accept: 'application/json' });
+    assert.ok(options?.signal instanceof AbortSignal);
+    return new Response(JSON.stringify(manifest));
+  });
+  assert.deepEqual(selectRelease(result, '0.1.3'), { version: '0.2.0', feedUrl: `${base}update-darwin-arm64.json` });
+});
+
+test('missing manifests are skipped and failed website requests allow retry', async () => {
+  assert.equal(await fetchLatestRelease(async () => new Response('', { status: 404 })), undefined);
+  await assert.rejects(fetchLatestRelease(async () => new Response('', { status: 503 })), /503/);
+  await assert.rejects(fetchLatestRelease(async () => new Response('invalid json')));
 });
 
 class NativeUpdater extends EventEmitter {

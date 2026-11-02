@@ -1,8 +1,18 @@
 import type { UpdateState } from '../shared/update-protocol.ts';
 
 export const releaseRepository = 'younghoandrewchaa/y-term';
-export const releaseApiUrl = `https://api.github.com/repos/${releaseRepository}/releases/latest`;
 export const updateManifestName = 'update-darwin-arm64.json';
+const latestManifestUrl = `https://github.com/${releaseRepository}/releases/latest/download/${updateManifestName}`;
+
+export async function fetchLatestRelease(fetcher: (url: string, options: RequestInit) => Promise<Response>): Promise<unknown> {
+  const response = await fetcher(latestManifestUrl, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (response.status === 404) return undefined;
+  if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
+  return response.json();
+}
 const cooldown = 5 * 60_000;
 
 interface Release { version: string; feedUrl: string }
@@ -15,20 +25,20 @@ function stableVersion(value: unknown): number[] | undefined {
 export function selectRelease(value: unknown, currentVersion: string): Release | undefined {
   if (!value || typeof value !== 'object') return;
   const release = value as Record<string, unknown>;
-  if (release.draft !== false || release.prerelease !== false || typeof release.tag_name !== 'string') return;
-  const version = release.tag_name.replace(/^v/, '');
+  if (typeof release.currentRelease !== 'string') return;
+  const version = release.currentRelease;
   const next = stableVersion(version), current = stableVersion(currentVersion);
   if (!next || !current) return;
   const difference = next.map((part, i) => part - current[i]).find(part => part !== 0);
-  if (!difference || difference < 0 || !Array.isArray(release.assets)) return;
-  const assets = release.assets;
-  const base = `https://github.com/${releaseRepository}/releases/download/${release.tag_name}/`;
-  const hasAsset = (name: string) => assets.some((asset: unknown) => {
-    if (!asset || typeof asset !== 'object') return false;
-    const entry = asset as Record<string, unknown>;
-    return entry.name === name && entry.browser_download_url === `${base}${name}`;
+  if (!difference || difference < 0 || !Array.isArray(release.releases)) return;
+  const base = `https://github.com/${releaseRepository}/releases/download/v${version}/`;
+  const hasAsset = release.releases.some((entry: unknown) => {
+    if (!entry || typeof entry !== 'object') return false;
+    const item = entry as Record<string, unknown>;
+    if (item.version !== version || !item.updateTo || typeof item.updateTo !== 'object') return false;
+    return (item.updateTo as Record<string, unknown>).url === `${base}Y-Term-darwin-arm64-${version}.zip`;
   });
-  if (!hasAsset(`Y-Term-darwin-arm64-${version}.zip`) || !hasAsset(updateManifestName)) return;
+  if (!hasAsset) return;
   return { version, feedUrl: `${base}${updateManifestName}` };
 }
 

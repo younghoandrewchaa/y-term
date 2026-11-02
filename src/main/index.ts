@@ -9,7 +9,7 @@ import { SessionManager } from './session-manager.ts';
 import { buildShellLaunch, runningAgentsAsync, shellCurrentDirectory, shellCurrentDirectoriesAsync, terminatePty, usableDirectory } from './shell.ts';
 import { registerTerminalIpc } from './terminal-ipc.ts';
 import type { MenuAction, RestoredTabs } from '../shared/terminal-protocol.ts';
-import { UpdateManager, releaseApiUrl } from './updates.ts';
+import { UpdateManager, fetchLatestRelease } from './updates.ts';
 import { GitService } from './git.ts';
 import { VsCodeDiff } from './vscode-diff.ts';
 import { agentSessionOf, processSnapshot } from './agent-sessions.ts';
@@ -134,15 +134,7 @@ void app.whenReady().then(() => {
     version: app.getVersion(),
     enabled: app.isPackaged && process.platform === 'darwin' && process.arch === 'arm64' && !process.env.Y_TERM_TEST_DATA,
     native: autoUpdater,
-    fetchRelease: async () => {
-      const response = await net.fetch(releaseApiUrl, {
-        headers: { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (response.status === 404) return undefined;
-      if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
-      return response.json();
-    },
+    fetchRelease: () => fetchLatestRelease((url, options) => net.fetch(url, options)),
     confirm: async () => {
       const options = {
         type: 'warning' as const, buttons: ['Cancel', 'Update and Restart'], defaultId: 0, cancelId: 0,
