@@ -93,7 +93,7 @@ export class TerminalView {
           const top = this.terminal.buffer.active.viewportY;
           const target = event.key === 'ArrowUp' ? this.commands.promptAbove(top) : this.commands.promptBelow(top);
           if (target !== undefined) this.terminal.scrollToLine(target);
-          else if (event.key === 'ArrowDown') this.terminal.scrollToBottom();
+          else if (event.key === 'ArrowDown' && this.commands.blocks.length) this.terminal.scrollToBottom();
         }
         return false;
       }
