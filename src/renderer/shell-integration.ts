@@ -54,6 +54,7 @@ export class CommandTracker {
     const block = this.list[this.list.length - 1];
     if (!block || block.end) return;
     if (mark.kind === 'output') {
+      if (block.output) return;
       block.output = this.terminal.registerMarker(0);
       block.command = this.pending;
       this.pending = undefined;

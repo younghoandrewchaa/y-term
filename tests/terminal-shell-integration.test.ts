@@ -96,3 +96,19 @@ test('finds the prompt above and below a line', async () => {
     assert.equal(f.commands.promptBelow(20), undefined);
   } finally { f.terminal.dispose(); }
 });
+
+test('ignores repeated output marks within a block', async () => {
+  const f = fixture({ scrollback: 5000 });
+  try {
+    await f.write(`${A}$ ${B}cmd\r\n${C}first\r\n`);
+    const first = f.commands.blocks[0].output;
+    assert.ok(first);
+    const line = first.line;
+    const markers = f.terminal.markers.length;
+    await f.write(`${Array.from({ length: 1000 }, (_, i) => `${C}x${i}\r\n`).join('')}`);
+    assert.equal(f.commands.blocks[0].output, first);
+    assert.equal(first.line, line);
+    assert.equal(first.isDisposed, false);
+    assert.equal(f.terminal.markers.length, markers);
+  } finally { f.terminal.dispose(); }
+});
