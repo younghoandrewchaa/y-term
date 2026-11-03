@@ -8,6 +8,8 @@ const MAX_BLOCKS = 1000;
 
 export class CommandTracker {
   nonce: string | undefined;
+  /** Called when a command block receives its exit code. */
+  finished: ((block: CommandBlock) => void) | undefined;
   private list: CommandBlock[] = [];
   private pending: string | undefined;
   private terminal: Pick<Terminal, 'registerMarker' | 'parser'>;
@@ -61,6 +63,7 @@ export class CommandTracker {
     } else if (mark.kind === 'finished') {
       block.end = this.terminal.registerMarker(0);
       block.exitCode = mark.exitCode;
+      this.finished?.(block);
     }
   }
 

@@ -10,6 +10,7 @@ import { attachTerminalFileDrop } from './file-drop.ts';
 import { attachTerminalImagePaste } from './image-paste.ts';
 import { createFileLinkProvider } from './file-links.ts';
 import { CommandTracker } from './shell-integration.ts';
+import { decorateBranches } from './branch-actions.ts';
 import { parseAgentStatus } from '../shared/agent-status.ts';
 import type { AgentReport } from '../shared/agent-status.ts';
 
@@ -45,10 +46,15 @@ export class TerminalView {
       else if (event.metaKey || event.ctrlKey) void window.terminal.openLink(uri).catch(error => status(String(error)));
     };
     this.terminal = new Terminal({
-      cursorBlink: true, allowProposedApi: false,
+      // Decorations (branch delete buttons) are still a proposed API in xterm 5.
+      cursorBlink: true, allowProposedApi: true,
       linkHandler: { activate: activateLink, allowNonHttpProtocols: true },
     });
     this.commands = new CommandTracker(this.terminal);
+    this.commands.finished = block => {
+      const id = this.session.id;
+      if (id) void decorateBranches(this.terminal, block, () => window.terminal.listBranches(id), (root, name) => window.terminal.deleteBranch(root, name), status);
+    };
     this.apply(preferences);
     this.terminal.loadAddon(this.fitAddon);
     this.terminal.loadAddon(this.search);

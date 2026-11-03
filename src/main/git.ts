@@ -15,7 +15,7 @@ const STATUS_LIMIT = 4 * 1024 * 1024;
 const BASELINE_LIMIT = 16 * 1024 * 1024;
 const conflicts = new Set(['DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU']);
 const utf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
-type FailureReason = 'not-repository' | 'git-missing' | 'too-large' | 'timeout' | 'error';
+type FailureReason = 'not-repository' | 'git-missing' | 'too-large' | 'timeout' | 'unmerged' | 'error';
 class GitFailure extends Error {
   readonly reason: FailureReason;
   constructor(reason: FailureReason, message: string) { super(message); this.reason = reason; }
@@ -99,7 +99,8 @@ export class GitService {
         if (this.disposed.has(owner)) { reject(new GitFailure('error', 'This window has closed.')); return; }
         if (code !== 0) {
           const error = Buffer.concat(errors).toString('utf8');
-          reject(new GitFailure(/not a git repository/i.test(error) ? 'not-repository' : 'error', /not a git repository/i.test(error) ? 'This file is outside a Git repository.' : `Could not read this file from Git. ${error.slice(0, 500).trim()}`));
+          const reason: FailureReason = /not a git repository/i.test(error) ? 'not-repository' : /not fully merged/i.test(error) ? 'unmerged' : 'error';
+          reject(new GitFailure(reason, reason === 'not-repository' ? 'This folder is outside a Git repository.' : `Git failed. ${error.slice(0, 500).trim()}`));
         } else resolve(Buffer.concat(output));
       });
     });
@@ -143,5 +144,27 @@ export class GitService {
     // Filters apply the same line-ending and smudge conversion as a checkout.
     const content = await this.run(owner, root, ['cat-file', '--filters', object], BASELINE_LIMIT);
     return { label: unstaged && staged ? 'Staged' : 'HEAD', content };
+  }
+
+  /** The repository root and its local branches, or undefined outside a repository. */
+  async branches(owner: number, cwd: string): Promise<{ root: string; names: string[] } | undefined> {
+    let root: string;
+    try { root = utf8.decode(await this.run(owner, cwd, ['rev-parse', '--show-toplevel'], STATUS_LIMIT)).replace(/\n$/, ''); }
+    catch (error) { if (error instanceof GitFailure && error.reason === 'not-repository') return undefined; throw error; }
+    const output = await this.run(owner, root, ['for-each-ref', '--format=%(refname)', 'refs/heads/'], STATUS_LIMIT);
+    const names = utf8.decode(output).split('\n').filter(ref => ref.startsWith('refs/heads/')).map(ref => ref.slice('refs/heads/'.length));
+    return { root, names };
+  }
+
+  /** Deletes a local branch of the repository at `root`; 'unmerged' means Git refused `-d` and `force` is needed. */
+  async deleteBranch(owner: number, root: string, name: string, force: boolean): Promise<'deleted' | 'unmerged'> {
+    const current = await this.branches(owner, root);
+    if (current?.root !== root || !current.names.includes(name)) throw new GitFailure('error', `Branch ${name} no longer exists.`);
+    try { await this.run(owner, root, ['branch', force ? '-D' : '-d', name], STATUS_LIMIT); }
+    catch (error) {
+      if (!force && error instanceof GitFailure && error.reason === 'unmerged') return 'unmerged';
+      throw error;
+    }
+    return 'deleted';
   }
 }
