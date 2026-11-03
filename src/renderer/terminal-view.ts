@@ -9,6 +9,7 @@ import { TerminalSession } from './terminal-session.ts';
 import { attachTerminalFileDrop } from './file-drop.ts';
 import { attachTerminalImagePaste } from './image-paste.ts';
 import { createFileLinkProvider } from './file-links.ts';
+import { CommandTracker } from './shell-integration.ts';
 import { parseAgentStatus } from '../shared/agent-status.ts';
 import type { AgentReport } from '../shared/agent-status.ts';
 
@@ -21,6 +22,7 @@ const COMMAND_KEY_INPUT: Record<string, string> = {
 
 export class TerminalView {
   readonly terminal: Terminal;
+  readonly commands: CommandTracker;
   readonly search = new SearchAddon();
   private fitAddon = new FitAddon();
   private session: TerminalSession;
@@ -46,6 +48,7 @@ export class TerminalView {
       cursorBlink: true, allowProposedApi: false,
       linkHandler: { activate: activateLink, allowNonHttpProtocols: true },
     });
+    this.commands = new CommandTracker(this.terminal);
     this.apply(preferences);
     this.terminal.loadAddon(this.fitAddon);
     this.terminal.loadAddon(this.search);
@@ -57,6 +60,7 @@ export class TerminalView {
       exited: message => { this.exited = true; this.terminal.options.disableStdin = true; ended(); status(message); },
       directory,
       agent,
+      integration: nonce => { this.commands.nonce = nonce; },
     });
     const canPaste = () => !!this.session.id && !this.exited && !this.disposed && host.isConnected
       && !host.closest('[hidden]') && !document.querySelector('dialog[open]');
@@ -80,6 +84,16 @@ export class TerminalView {
         if (event.type === 'keydown') {
           event.preventDefault();
           this.terminal.input(commandInput);
+        }
+        return false;
+      }
+      if (event.metaKey && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.isComposing && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+        if (event.type === 'keydown') {
+          event.preventDefault();
+          const top = this.terminal.buffer.active.viewportY;
+          const target = event.key === 'ArrowUp' ? this.commands.promptAbove(top) : this.commands.promptBelow(top);
+          if (target !== undefined) this.terminal.scrollToLine(target);
+          else if (event.key === 'ArrowDown' && this.commands.blocks.length) this.terminal.scrollToBottom();
         }
         return false;
       }
@@ -162,6 +176,7 @@ export class TerminalView {
     this.removeFileDrop();
     this.removeImagePaste();
     this.observer.disconnect();
+    this.commands.dispose();
     this.terminal.dispose();
     await this.session.close();
   }

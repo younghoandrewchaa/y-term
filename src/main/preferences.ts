@@ -6,7 +6,7 @@ import type { Preferences, WindowBounds } from '../shared/terminal-protocol.ts';
 export function defaultPreferences(): Preferences {
   return {
     fontFamily: 'Menlo, Monaco, monospace', fontSize: 14, theme: 'dark', scrollback: 10000,
-    shell: process.env.SHELL && isAbsolute(process.env.SHELL) ? process.env.SHELL : '/bin/zsh', cwd: homedir(),
+    shell: process.env.SHELL && isAbsolute(process.env.SHELL) ? process.env.SHELL : '/bin/zsh', shellIntegration: true, cwd: homedir(),
   };
 }
 
@@ -25,8 +25,9 @@ export function validatePreferences(value: unknown): Preferences {
   for (const key of ['shell', 'cwd'] as const) {
     if (typeof p[key] !== 'string' || !isAbsolute(p[key]) || p[key].length > 4096 || /[\x00-\x1f]/.test(p[key])) throw new Error(`${key} must be an absolute path.`);
   }
+  if (typeof p.shellIntegration !== 'boolean') throw new Error('Shell integration must be on or off.');
   const bounds = p.bounds === undefined ? undefined : validateBounds(p.bounds);
-  return { fontFamily: p.fontFamily, fontSize: p.fontSize, theme: p.theme, scrollback: p.scrollback, shell: p.shell, cwd: p.cwd, ...(p.sidebarWidth !== undefined ? { sidebarWidth: p.sidebarWidth } : {}), ...(bounds ? { bounds } : {}) };
+  return { fontFamily: p.fontFamily, fontSize: p.fontSize, theme: p.theme, scrollback: p.scrollback, shell: p.shell, shellIntegration: p.shellIntegration, cwd: p.cwd, ...(p.sidebarWidth !== undefined ? { sidebarWidth: p.sidebarWidth } : {}), ...(bounds ? { bounds } : {}) };
 }
 
 export function validateBounds(value: unknown): WindowBounds {

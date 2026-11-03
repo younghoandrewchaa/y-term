@@ -40,7 +40,8 @@ New tabs inherit the active shell’s current working directory. The configured 
 - ⌘+ / ⌘− change font size, ⌘0 resets it, and ⌘K clears the display.
 - ⌘-click or Control-click opens HTTP/HTTPS links in your browser and local file paths in their default macOS app. Relative paths use the terminal session's current directory; quoted paths with spaces and local `file:` hyperlinks are supported.
 - ⌘-click a file with uncommitted Git changes, such as a path in `git status` output, to open a diff in VS Code. Unstaged changes are compared with the staged version (or HEAD if nothing is staged); staged-only changes are compared with HEAD. Paths with a line number (`file.ts:42`), untracked, newly added and conflicted files open normally. ⌥⌘-click always opens the file itself. Requires the VS Code `code` command (on PATH, in `/usr/local/bin` or `/opt/homebrew/bin`, or inside `/Applications/Visual Studio Code.app`); without it, files open normally. The previous version is a read-only temporary copy that is removed when Y-Term quits.
-- ⌘, opens settings. Font, theme, and scrollback apply immediately. Shell and initial directory changes apply to new tabs.
+- ⌘↑ / ⌘↓ jump to the previous / next prompt (zsh with shell integration; they do nothing otherwise).
+- ⌘, opens settings. Font, theme, and scrollback apply immediately. Shell and initial directory changes apply to new tabs. "Shell integration (zsh)" is on by default and applies to new tabs: Y-Term loads a small script (your dotfiles are untouched) that marks prompts and commands for ⌘↑ / ⌘↓. Untick it to start zsh exactly as before.
 
 Settings and window placement are stored in `preferences.json` inside Electron's macOS user-data directory (`~/Library/Application Support/Y-Term`). Invalid or corrupt files recover with defaults. Terminal output and credentials are not saved. Quitting ends shells; reopening creates fresh ones.
 

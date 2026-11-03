@@ -15,6 +15,7 @@ module.exports = {
     icon: 'assets/icon.icns',
     ...(process.env.ELECTRON_ZIP_DIR ? { electronZipDir: process.env.ELECTRON_ZIP_DIR } : {}),
     executableName: 'Y-Term',
+    extraResource: ['src/shell-integration'],
     appBundleId: 'dev.youngho.y-term',
     appCategoryType: 'public.app-category.developer-tools',
     // node-pty needs both its native binding and its executable spawn-helper.

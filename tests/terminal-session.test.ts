@@ -20,6 +20,7 @@ function fixture(create: () => Promise<string> = async () => 'session-1') {
     exited: message => calls.push(['exit', message]),
     directory: cwd => calls.push(['directory', cwd]),
     agent: name => calls.push(['agent', name]),
+    integration: nonce => calls.push(['integration', nonce]),
   });
   return { session, calls, writes, processed, receive: (event: TerminalEvent) => receive(event) };
 }
@@ -76,4 +77,12 @@ test('forwards a resize that occurs while shell creation is pending', async () =
   resolve('session-1');
   await starting;
   assert.deepEqual(f.calls, [['resize', 'session-1', 120, 40], ['ready', 'session-1']]);
+});
+
+test('routes the integration nonce for its own session', async () => {
+  const f = fixture();
+  await f.session.start({ cols: 80, rows: 24 });
+  f.receive({ type: 'integration', id: 'other', nonce: 'wrong' });
+  f.receive({ type: 'integration', id: 'session-1', nonce: 'n' });
+  assert.deepEqual(f.calls, [['ready', 'session-1'], ['integration', 'n']]);
 });

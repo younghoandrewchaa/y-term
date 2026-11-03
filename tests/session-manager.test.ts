@@ -7,7 +7,7 @@ test('file links use the owned session live directory and retain it after exit',
   const pty = new FakePty();
   let cwd: string | undefined = '/first';
   const events: TerminalEvent[] = [];
-  const manager = new SessionManager(() => pty, (_owner, event) => events.push(event), () => {}, () => cwd);
+  const manager = new SessionManager(() => pty, (_owner, event) => { if (event.type !== 'integration') events.push(event); }, () => {}, () => cwd);
   const id = manager.create(1, { cols: 80, rows: 24 });
   manager.ready(1, id);
   assert.equal(manager.directory(1, id), '/first');
@@ -44,7 +44,7 @@ function setup() {
   const events: TerminalEvent[] = [];
   const manager = new SessionManager(() => {
     const pty = new FakePty(); ptys.push(pty); return pty;
-  }, (_owner, event) => events.push(event), (pty) => pty.kill());
+  }, (_owner, event) => { if (event.type !== 'integration') events.push(event); }, (pty) => pty.kill());
   return { manager, ptys, events };
 }
 
@@ -248,4 +248,21 @@ test('reports live tabs in sidebar order with fresh directories and the active t
   manager.closeOwner(1);
   assert.deepEqual(manager.tabsOf(1), { tabs: [], active: 0 });
   assert.deepEqual(manager.tabsOf(2).tabs.map(tab => tab.pid), [103]);
+});
+
+test('delivers a distinct integration nonce to each shell before its output', () => {
+  const nonces: string[] = [];
+  const ptys: FakePty[] = [];
+  const events: TerminalEvent[] = [];
+  const manager = new SessionManager((_size, _cwd, nonce) => {
+    nonces.push(nonce); const pty = new FakePty(); ptys.push(pty); return pty;
+  }, (_owner, event) => events.push(event), () => {});
+  const first = manager.create(1, { cols: 80, rows: 24 });
+  manager.create(1, { cols: 80, rows: 24 });
+  assert.notEqual(nonces[0], nonces[1]);
+  for (const nonce of nonces) assert.match(nonce, /^[0-9a-f-]{36}$/);
+  ptys[0].data('hello');
+  manager.ready(1, first);
+  assert.deepEqual(events.map(event => event.type), ['integration', 'data']);
+  assert.deepEqual(events[0], { type: 'integration', id: first, nonce: nonces[0] });
 });

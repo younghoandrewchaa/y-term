@@ -123,8 +123,9 @@ function setMenu(): void {
 void app.whenReady().then(() => {
   app.dock?.setIcon(join(__dirname, '../../assets/icon.png'));
   preferences = new PreferencesStore(app.getPath('userData'));
-  manager = new SessionManager((size, cwd) => {
-    const launch = buildShellLaunch({ ...preferences.get(), ...(usableDirectory(cwd) ? { cwd } : {}) }, size, process.env);
+  const integrationDirectory = app.isPackaged ? join(process.resourcesPath, 'shell-integration') : join(app.getAppPath(), 'src/shell-integration');
+  manager = new SessionManager((size, cwd, nonce) => {
+    const launch = buildShellLaunch({ ...preferences.get(), ...(usableDirectory(cwd) ? { cwd } : {}) }, size, process.env, { directory: integrationDirectory, nonce });
     return spawn(launch.file, launch.args, launch.options);
   }, (owner, event) => {
     const contents = webContents.fromId(owner);
