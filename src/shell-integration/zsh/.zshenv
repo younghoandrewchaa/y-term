@@ -5,9 +5,11 @@ if [[ -n ${Y_TERM_USER_ZDOTDIR+set} ]]; then
 else
   builtin unset ZDOTDIR
 fi
-builtin typeset -g _yterm_dir=${${(%):-%x}:A:h}
-[[ -r ${ZDOTDIR:-$HOME}/.zshenv ]] && builtin source -- ${ZDOTDIR:-$HOME}/.zshenv
-if [[ -o interactive && -n $Y_TERM_SHELL_INTEGRATION_NONCE ]]; then
-  builtin source -- $_yterm_dir/y-term-integration.zsh
+# Keep the nonce out of the environment before any user startup file can spawn a child.
+builtin typeset -g _yterm_dir=${${(%):-%x}:A:h} _yterm_nonce=$Y_TERM_SHELL_INTEGRATION_NONCE
+builtin unset Y_TERM_SHELL_INTEGRATION_NONCE
+[[ -r "${ZDOTDIR:-$HOME}/.zshenv" ]] && builtin source -- "${ZDOTDIR:-$HOME}/.zshenv"
+if [[ -o interactive && -n $_yterm_nonce ]]; then
+  builtin source -- "$_yterm_dir/y-term-integration.zsh"
 fi
 builtin unset _yterm_dir

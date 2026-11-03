@@ -42,11 +42,11 @@ const repo = join(import.meta.dirname, '..');
 const ESC = '\x1b]';
 const BEL = '\x07';
 
-async function zshIntegration(extraEnv: (home: string) => Record<string, string> = () => ({}), rcDir = (home: string) => home) {
+async function zshIntegration(extraEnv: (home: string) => Record<string, string> = () => ({}), rcDir = (home: string) => home, files: { zshrc?: string; zshenv?: string } = {}) {
   const home = mkdtempSync(join(tmpdir(), 'yterm-zsh-'));
   mkdirSync(rcDir(home), { recursive: true });
-  writeFileSync(join(rcDir(home), '.zshrc'), 'print YTERM_RC_LOADED\n');
-  writeFileSync(join(home, '.zshenv'), 'export YTERM_ENV_LOADED=1\n');
+  writeFileSync(join(rcDir(home), '.zshrc'), `print YTERM_RC_LOADED\n${files.zshrc ?? ''}`);
+  writeFileSync(join(home, '.zshenv'), `export YTERM_ENV_LOADED=1\n${files.zshenv ?? ''}`);
   let output = '';
   const manager = new SessionManager(size => spawn('/bin/zsh', ['-l', '-i'], {
     ...size, cwd: home, name: 'xterm-256color',
@@ -120,5 +120,45 @@ test('zsh integration emits no D for an empty command line', async () => {
     const between = z.output.slice(first + `${ESC}133;A${BEL}`.length, z.output.indexOf('AFTER_EMPTY'));
     assert.equal(between.split(`${ESC}133;A${BEL}`).length - 1, 1);
     assert.doesNotMatch(between, /133;D/);
+  } finally { z.close(); }
+});
+
+test('zsh integration escapes control characters in lowercase hex', async () => {
+  const z = await zshIntegration();
+  try {
+    await z.until(new RegExp(`${ESC}133;B${BEL}`));
+    z.write(': a\x16\tb\r');
+    await z.until(new RegExp(`${ESC}633;E;: a\\\\x09b;n0nce${BEL}`));
+    assert.doesNotMatch(z.output, /\\x[0-9a-f]*[A-F]/);
+  } finally { z.close(); }
+});
+
+test('zsh integration escapes a long command line quickly', async () => {
+  const z = await zshIntegration();
+  try {
+    await z.until(new RegExp(`${ESC}133;B${BEL}`));
+    const start = Date.now();
+    z.write(`\x1b[200~: ${'x'.repeat(40000)}\x1b[201~\r`);
+    await z.until(new RegExp(`${ESC}633;E;: x{40000};n0nce${BEL}`));
+    assert.ok(Date.now() - start < 2000, `took ${Date.now() - start} ms`);
+  } finally { z.close(); }
+});
+
+test('zsh integration keeps the nonce from the user\'s .zshenv children', async () => {
+  const z = await zshIntegration(undefined, undefined, { zshenv: 'print -r -- "CHILD_SAW=$(env | grep -c Y_TERM_SHELL_INTEGRATION_NONCE)"\n' });
+  try {
+    await z.until(/CHILD_SAW=0/);
+    await z.until(new RegExp(`${ESC}133;B${BEL}`));
+    z.write('true\r');
+    await z.until(new RegExp(`${ESC}633;E;true;n0nce${BEL}`));
+  } finally { z.close(); }
+});
+
+test('zsh integration marks the first prompt even when a precmd hook rebuilds PS1', async () => {
+  const z = await zshIntegration(undefined, undefined, { zshrc: "_fw() { PS1='FW> ' }\nprecmd_functions+=(_fw)\n" });
+  try {
+    await z.until(new RegExp(`FW> [^]*${ESC}133;B${BEL}`));
+    const before = z.output.slice(0, z.output.indexOf(`${ESC}133;B${BEL}`));
+    assert.equal(before.split(`${ESC}133;A${BEL}`).length - 1, 1);
   } finally { z.close(); }
 });
