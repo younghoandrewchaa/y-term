@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { agentName, agentOf, agentProcessOf, buildShellLaunch, descendantsOf, directoriesFromLsof, shellCurrentDirectoriesAsync, shellCurrentDirectory, usableDirectory } from '../src/main/shell.ts';
 import { tmpdir } from 'node:os';
-import { realpathSync } from 'node:fs';
+import { join } from 'node:path';
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { defaultPreferences } from '../src/main/preferences.ts';
 
 test('reads the live working directory from a local process and ignores invalid processes', () => {
@@ -84,4 +85,41 @@ test('finds an agent below the shell but not in unrelated processes', () => {
 test('accepts only absolute, readable directories', () => {
   assert.equal(usableDirectory(tmpdir()), true);
   for (const value of ['relative', '/definitely/missing', '/etc/hosts', `${tmpdir()}\n`, 42, undefined]) assert.equal(usableDirectory(value), false, String(value));
+});
+
+function integrationDirectory(withScripts: boolean) {
+  const directory = mkdtempSync(join(tmpdir(), 'y-term-integration-'));
+  if (withScripts) { mkdirSync(join(directory, 'zsh')); writeFileSync(join(directory, 'zsh/.zshenv'), ''); }
+  return directory;
+}
+
+test("injects zsh integration with the user's ZDOTDIR preserved", () => {
+  const directory = integrationDirectory(true);
+  const preferences = { ...defaultPreferences(), shell: '/bin/zsh', cwd: '/private/tmp' };
+  const size = { cols: 90, rows: 30 };
+  const { env } = buildShellLaunch(preferences, size, { PATH: '/usr/bin', ZDOTDIR: '/u/zdot' }, { directory, nonce: 'n' }).options;
+  assert.equal(env.ZDOTDIR, join(directory, 'zsh'));
+  assert.equal(env.Y_TERM_USER_ZDOTDIR, '/u/zdot');
+  assert.equal(env.Y_TERM_SHELL_INTEGRATION_NONCE, 'n');
+  const plain = buildShellLaunch(preferences, size, { PATH: '/usr/bin' }, { directory, nonce: 'n' }).options.env;
+  assert.equal(plain.Y_TERM_USER_ZDOTDIR, undefined);
+  assert.equal(plain.ZDOTDIR, join(directory, 'zsh'));
+});
+
+test('skips integration when the scripts are missing', () => {
+  const { env } = buildShellLaunch({ ...defaultPreferences(), shell: '/bin/zsh', cwd: '/private/tmp' }, { cols: 90, rows: 30 }, { ZDOTDIR: '/u/zdot' }, { directory: integrationDirectory(false), nonce: 'n' }).options;
+  assert.equal(env.ZDOTDIR, '/u/zdot');
+  assert.equal(env.Y_TERM_USER_ZDOTDIR, undefined);
+  assert.equal(env.Y_TERM_SHELL_INTEGRATION_NONCE, undefined);
+});
+
+test('skips integration when disabled or for other shells', () => {
+  const integration = { directory: integrationDirectory(true), nonce: 'n' };
+  const size = { cols: 90, rows: 30 };
+  for (const preferences of [{ ...defaultPreferences(), shell: '/bin/zsh', cwd: '/private/tmp', shellIntegration: false }, { ...defaultPreferences(), shell: '/bin/bash', cwd: '/private/tmp' }]) {
+    const { env } = buildShellLaunch(preferences, size, { ZDOTDIR: '/u/zdot' }, integration).options;
+    assert.equal(env.ZDOTDIR, '/u/zdot');
+    assert.equal(env.Y_TERM_USER_ZDOTDIR, undefined);
+    assert.equal(env.Y_TERM_SHELL_INTEGRATION_NONCE, undefined);
+  }
 });

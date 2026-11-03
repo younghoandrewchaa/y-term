@@ -32,12 +32,12 @@ export function validateDimensions(cols: number, rows: number): void {
 export class SessionManager {
   private sessions = new Map<string, Session>();
   private layouts = new Map<number, { ids: string[]; active?: string }>();
-  private spawn: (size: Dimensions, cwd?: string) => PtyProcess;
+  private spawn: (size: Dimensions, cwd: string | undefined, nonce: string) => PtyProcess;
   private currentDirectory: (pid: number) => string | undefined;
   private notify: (owner: number, event: TerminalEvent) => void;
   private terminate: (pty: PtyProcess) => void;
 
-  constructor(spawn: (size: Dimensions, cwd?: string) => PtyProcess, notify: (owner: number, event: TerminalEvent) => void, terminate: (pty: PtyProcess) => void,
+  constructor(spawn: (size: Dimensions, cwd: string | undefined, nonce: string) => PtyProcess, notify: (owner: number, event: TerminalEvent) => void, terminate: (pty: PtyProcess) => void,
     currentDirectory: (pid: number) => string | undefined = () => undefined) {
     this.spawn = spawn; this.notify = notify; this.terminate = terminate;
     this.currentDirectory = currentDirectory;
@@ -53,13 +53,15 @@ export class SessionManager {
     const source = sourceId === undefined ? undefined : this.owned(owner, sourceId);
     // A source tab wins, falling back to its last polled directory if the lookup times out;
     // the spawner decides whether a requested directory is usable.
-    const pty = this.spawn(size, source ? (source.ended ? undefined : this.currentDirectory(source.pty.pid) ?? source.cwd) : cwd);
+    const nonce = randomUUID();
+    const pty = this.spawn(size, source ? (source.ended ? undefined : this.currentDirectory(source.pty.pid) ?? source.cwd) : cwd, nonce);
     const id = randomUUID();
     const session: Session = {
       owner, pty, ready: false, ended: false, paused: false, sequence: 0,
       pending: 0, outstanding: new Map(), queue: [], subscriptions: [],
     };
     this.sessions.set(id, session);
+    this.deliver(session, { type: 'integration', id, nonce });
     session.subscriptions.push(pty.onData(data => {
       if (session.ended || !this.sessions.has(id)) return;
       if (session.pending + data.length > MAX_BUFFER) {

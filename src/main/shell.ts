@@ -1,5 +1,5 @@
 import { accessSync, constants, statSync } from 'node:fs';
-import { basename, isAbsolute } from 'node:path';
+import { basename, isAbsolute, join } from 'node:path';
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { AgentProcess, Dimensions, Preferences, PtyProcess } from '../shared/terminal-protocol.ts';
@@ -59,7 +59,12 @@ export function shellCurrentDirectory(pid: number, timeout = 1000): string | und
   } catch { return undefined; }
 }
 
-export function buildShellLaunch(preferences: Preferences, size: Dimensions, inherited: NodeJS.ProcessEnv) {
+function readable(path: string): boolean {
+  try { accessSync(path, constants.R_OK); return true; }
+  catch { return false; }
+}
+
+export function buildShellLaunch(preferences: Preferences, size: Dimensions, inherited: NodeJS.ProcessEnv, integration?: { directory: string; nonce: string }) {
   try { accessSync(preferences.shell, constants.X_OK); }
   catch { throw new Error(`Cannot run shell: ${preferences.shell}. Update the shell path in Settings.`); }
   try { if (!statSync(preferences.cwd).isDirectory()) throw new Error(); accessSync(preferences.cwd, constants.R_OK | constants.X_OK); }
@@ -69,6 +74,10 @@ export function buildShellLaunch(preferences: Preferences, size: Dimensions, inh
     if (value !== undefined && !key.startsWith('ELECTRON_') && key !== 'NODE_OPTIONS' && key !== 'NODE_CHANNEL_FD') env[key] = value;
   }
   Object.assign(env, { TERM: 'xterm-256color', COLORTERM: 'truecolor', TERM_PROGRAM: 'Y-Term', TERM_PROGRAM_VERSION: '0.1.0' });
+  if (integration && preferences.shellIntegration && basename(preferences.shell) === 'zsh' && readable(join(integration.directory, 'zsh/.zshenv'))) {
+    if (inherited.ZDOTDIR !== undefined) env.Y_TERM_USER_ZDOTDIR = inherited.ZDOTDIR;
+    Object.assign(env, { ZDOTDIR: join(integration.directory, 'zsh'), Y_TERM_SHELL_INTEGRATION_NONCE: integration.nonce });
+  }
   const args = ['zsh', 'bash', 'sh', 'fish'].includes(basename(preferences.shell)) ? ['-l', '-i'] : [];
   return { file: preferences.shell, args, options: { name: 'xterm-256color', cols: size.cols, rows: size.rows, cwd: preferences.cwd, env } };
 }

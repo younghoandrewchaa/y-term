@@ -24,7 +24,7 @@ export class TerminalSession {
         });
       } else if (event.type === 'directory') output.directory(event.cwd);
       else if (event.type === 'agent') output.agent(event.agent, event.agentPid);
-      else output.exited(event.error ?? `Shell exited with status ${event.exitCode}${event.signal ? ` (signal ${event.signal})` : ''}. Open a new tab to start a fresh shell.`);
+      else if (event.type === 'exit') output.exited(event.error ?? `Shell exited with status ${event.exitCode}${event.signal ? ` (signal ${event.signal})` : ''}. Open a new tab to start a fresh shell.`);
     });
   }
   async start(size: Dimensions, sourceId?: string, cwd?: string): Promise<void> {
