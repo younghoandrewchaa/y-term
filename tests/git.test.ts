@@ -104,3 +104,23 @@ test('locates a uniquely matching tracked or unignored file below a directory', 
   t.after(() => rm(outside, { recursive: true, force: true }));
   assert.equal(await service.locate(1, outside, 'runner.py'), undefined);
 });
+
+test('lists local branches and deletes merged and unmerged ones', async t => {
+  const root = await fixture(t);
+  await writeFile(join(root, 'file'), 'base\n'); git(root, 'add', '.'); git(root, 'commit', '-qm', 'base');
+  const main = git(root, 'branch', '--show-current').trim();
+  git(root, 'branch', 'merged'); git(root, 'checkout', '-qb', 'unmerged');
+  await writeFile(join(root, 'file'), 'change\n'); git(root, 'commit', '-qam', 'change'); git(root, 'checkout', '-q', main);
+  await mkdir(join(root, 'nested'));
+  assert.deepEqual(await service.branches(1, join(root, 'nested')), { root, names: [main, 'merged', 'unmerged'].sort() });
+  assert.equal(await service.deleteBranch(1, root, 'merged', false), 'deleted');
+  assert.equal(await service.deleteBranch(1, root, 'unmerged', false), 'unmerged');
+  assert.equal(await service.deleteBranch(1, root, 'unmerged', true), 'deleted');
+  assert.deepEqual((await service.branches(1, root))?.names, [main]);
+  await assert.rejects(service.deleteBranch(1, root, 'merged', false), /no longer exists/);
+  await assert.rejects(service.deleteBranch(1, join(root, 'nested'), main, true), /no longer exists/);
+  await assert.rejects(service.deleteBranch(1, root, main, true), /Git failed/);
+  const outside = await realpath(await mkdtemp(join(tmpdir(), 'y-term-plain-')));
+  t.after(() => rm(outside, { recursive: true, force: true }));
+  assert.equal(await service.branches(1, outside), undefined);
+});

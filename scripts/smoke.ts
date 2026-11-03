@@ -11,6 +11,7 @@ import { verifySidebarResize } from './sidebar-smoke.ts';
 import { verifySessionDirectories } from './directory-smoke.ts';
 import { verifyAttention } from './attention-smoke.ts';
 import { verifyAgentStatus } from './agent-status-smoke.ts';
+import { verifyBranchDelete } from './branch-smoke.ts';
 import { closeSmokeApplication } from './smoke-cleanup.ts';
 
 const directory = await mkdtemp(join(tmpdir(), 'y-term-smoke-'));
@@ -125,6 +126,7 @@ try {
     try { await window.terminal.openLink('file:///etc/passwd'); return false; } catch { return true; }
   });
   assert.equal(rejected, true);
+  await verifyBranchDelete(application, page);
   await verifySessionDirectories(page);
   await verifyImagePaste(application, page);
   await verifyLinks(application, page);

@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, shell } from 'electron';
+import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import type { IpcMainEvent, IpcMainInvokeEvent, WebContents } from 'electron';
 import { notificationText } from '../shared/attention.ts';
 import type { AttentionBadge } from './attention.ts';
@@ -7,6 +7,7 @@ import type { SessionManager } from './session-manager.ts';
 import { isSafeExternalUrl, isTrustedFrame } from './security.ts';
 import type { UpdateManager } from './updates.ts';
 import { homedir } from 'node:os';
+import { isAbsolute } from 'node:path';
 import { openFileLink } from './file-links.ts';
 import type { GitService } from './git.ts';
 import type { VsCodeDiff } from './vscode-diff.ts';
@@ -66,6 +67,24 @@ export function registerTerminalIpc(manager: SessionManager, preferences: Prefer
       catch (error) { console.error('Could not search for file:', error); return undefined; }
     };
     await openFileLink(value, cwd, homedir(), path => shell.openPath(path), plain === true ? undefined : diff, locate);
+  });
+  ipcMain.handle('terminal:branches', async (event, id) => {
+    const ownerId = owner(event);
+    const cwd = manager.directory(ownerId, id);
+    return cwd ? await git.branches(ownerId, cwd) : undefined;
+  });
+  // The root came from 'terminal:branches'; Git checks the branch again before deleting it.
+  ipcMain.handle('terminal:delete-branch', async (event, root, name) => {
+    const ownerId = owner(event);
+    if (typeof root !== 'string' || !isAbsolute(root) || typeof name !== 'string' || !name || name.startsWith('-')) throw new Error('Invalid branch.');
+    const window = BrowserWindow.fromWebContents(event.sender)!;
+    const confirm = async (message: string, detail: string, action: string) => (await dialog.showMessageBox(window, {
+      type: 'warning', buttons: ['Cancel', action], defaultId: 0, cancelId: 0, message, detail,
+    })).response === 1;
+    if (!await confirm(`Delete branch ${name}?`, `Runs git branch -d in ${root}.`, 'Delete')) return false;
+    if (await git.deleteBranch(ownerId, root, name, false) === 'deleted') return true;
+    if (!await confirm(`Branch ${name} is not fully merged.`, 'Commits that are only on this branch will be lost. Delete it anyway with git branch -D?', 'Force Delete')) return false;
+    return await git.deleteBranch(ownerId, root, name, true) === 'deleted';
   });
   const listen = (channel: string, handler: (event: IpcMainEvent, ...args: any[]) => void) => {
     ipcMain.on(channel, (event, ...args) => {

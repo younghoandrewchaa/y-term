@@ -21,6 +21,8 @@ export type TerminalEvent =
   | { type: 'directory'; id: string; cwd: string }
   | { type: 'agent'; id: string; agent?: string; agentPid?: number }
   | { type: 'exit'; id: string; exitCode: number; signal?: number; error?: string };
+/** A repository's root and local branch names, as Git reports them. */
+export interface BranchList { root: string; names: string[] }
 export interface WindowBounds { x: number; y: number; width: number; height: number }
 export interface Preferences {
   fontFamily: string;
@@ -59,6 +61,10 @@ export interface TerminalAPI {
   openLink(url: string): Promise<void>;
   /** Opens a VS Code diff for files with Git changes unless `plain` is set. */
   openFile(id: string, path: string, plain?: boolean): Promise<void>;
+  /** Local branches of the repository that contains the tab's current directory. */
+  listBranches(id: string): Promise<BranchList | undefined>;
+  /** Asks for confirmation, then deletes the branch; resolves false if the user cancels. */
+  deleteBranch(root: string, name: string): Promise<boolean>;
   setAttentionCount(count: number): void;
   notifyAttention(tab: string, title: string, body: string): void;
   onAttentionActivate(listener: (tab: string) => void): () => void;

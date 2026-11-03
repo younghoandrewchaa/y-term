@@ -116,6 +116,10 @@ main { flex: 1; min-height: 0; position: relative; }
 .terminal-panel { height: 100%; padding: 18px 20px 8px; display: flex; flex-direction: column; }
 .terminal-host { flex: 1; min-height: 0; overflow: hidden; }
 .terminal-host .xterm { height: 100%; }
+.branch-delete { display: flex; align-items: center; justify-content: center; color: var(--muted); cursor: pointer; border-radius: 4px; }
+.branch-delete:hover { color: var(--danger); background: var(--raised); }
+.branch-delete svg { width: 13px; height: 13px; }
+.branch-deleted { pointer-events: none; background: linear-gradient(transparent calc(50% - 1px), var(--muted) calc(50% - 1px), var(--muted) calc(50% + 1px), transparent calc(50% + 1px)); }
 .session-status { display: flex; gap: 12px; padding: 12px 14px; background: var(--raised); border: 1px solid var(--control-border); border-radius: 10px; margin-bottom: 12px; align-items: center; font-size: 12px; }
 .session-status span { flex: 1; overflow-wrap: anywhere; }
 footer { display: flex; align-items: center; gap: 16px; min-height: 32px; padding: 7px 20px; color: var(--muted); border-top: 1px solid var(--border); font-size: 10px; }

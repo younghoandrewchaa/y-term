@@ -39,6 +39,8 @@ const api: TerminalAPI = {
   savePreferences: value => ipcRenderer.invoke('preferences:save', value),
   openLink: url => ipcRenderer.invoke('terminal:open-link', url),
   openFile: (id, path, plain = false) => ipcRenderer.invoke('terminal:open-file', id, path, plain),
+  listBranches: id => ipcRenderer.invoke('terminal:branches', id),
+  deleteBranch: (root, name) => ipcRenderer.invoke('terminal:delete-branch', root, name),
   setAttentionCount: count => ipcRenderer.send('attention:count', count),
   notifyAttention: (tab, title, body) => ipcRenderer.send('attention:notify', tab, title, body),
   onAttentionActivate: listener => {
