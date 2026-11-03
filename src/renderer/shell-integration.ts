@@ -19,6 +19,7 @@ export class CommandTracker {
     this.terminal = terminal;
     this.handlers = [
       terminal.parser.registerOscHandler(133, data => { const mark = parseOsc133(data); if (mark) this.mark(mark); return true; }),
+      terminal.parser.registerEscHandler({ final: 'c' }, () => { this.clear(); return false; }),
       terminal.parser.registerOscHandler(633, data => {
         const command = parseCommandLine(data, this.nonce);
         if (command !== undefined) this.pending = command;
@@ -64,8 +65,13 @@ export class CommandTracker {
     block.prompt.dispose();
   }
 
+  private clear(): void {
+    this.pending = undefined;
+    for (const block of [...this.list]) this.release(block);
+  }
+
   dispose(): void {
     for (const handler of this.handlers) handler.dispose();
-    for (const block of [...this.list]) this.release(block);
+    this.clear();
   }
 }

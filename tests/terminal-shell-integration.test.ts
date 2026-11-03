@@ -62,3 +62,24 @@ test('drops blocks that leave the scrollback and caps at 1,000', async () => {
     assert.equal(g.commands.blocks.length, 1000);
   } finally { g.terminal.dispose(); }
 });
+
+test('drops all blocks on a terminal reset', async () => {
+  const f = fixture();
+  try {
+    await f.write(`${A}one\r\n${A}two\r\n`);
+    assert.equal(f.commands.blocks.length, 2);
+    await f.write('\x1bc');
+    assert.equal(f.commands.blocks.length, 0);
+    await f.write(A);
+    assert.equal(f.commands.blocks.length, 1);
+  } finally { f.terminal.dispose(); }
+});
+
+test('keeps blocks across an alternate screen round trip', async () => {
+  const f = fixture();
+  try {
+    await f.write(`${A}one\r\n${A}two\r\n\x1b[?1049hfull screen\x1b[?1049l`);
+    assert.equal(f.commands.blocks.length, 2);
+    assert.ok(f.commands.blocks.every(block => !block.prompt.isDisposed));
+  } finally { f.terminal.dispose(); }
+});
