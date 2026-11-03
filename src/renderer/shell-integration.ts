@@ -15,6 +15,18 @@ export class CommandTracker {
   private listeners = new Map<CommandBlock, IDisposable>();
   get blocks(): readonly CommandBlock[] { return this.list; }
 
+  promptAbove(line: number): number | undefined {
+    let found: number | undefined;
+    for (const { prompt } of this.list) if (prompt.line < line && (found === undefined || prompt.line > found)) found = prompt.line;
+    return found;
+  }
+
+  promptBelow(line: number): number | undefined {
+    let found: number | undefined;
+    for (const { prompt } of this.list) if (prompt.line > line && (found === undefined || prompt.line < found)) found = prompt.line;
+    return found;
+  }
+
   constructor(terminal: Pick<Terminal, 'registerMarker' | 'parser'>) {
     this.terminal = terminal;
     this.handlers = [

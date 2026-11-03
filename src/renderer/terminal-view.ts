@@ -87,6 +87,16 @@ export class TerminalView {
         }
         return false;
       }
+      if (event.metaKey && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.isComposing && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+        if (event.type === 'keydown') {
+          event.preventDefault();
+          const top = this.terminal.buffer.active.viewportY;
+          const target = event.key === 'ArrowUp' ? this.commands.promptAbove(top) : this.commands.promptBelow(top);
+          if (target !== undefined) this.terminal.scrollToLine(target);
+          else if (event.key === 'ArrowDown') this.terminal.scrollToBottom();
+        }
+        return false;
+      }
       if (event.key !== 'Enter' || !event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return true;
       if (event.type === 'keydown') {
         event.preventDefault();

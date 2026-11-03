@@ -83,3 +83,16 @@ test('keeps blocks across an alternate screen round trip', async () => {
     assert.ok(f.commands.blocks.every(block => !block.prompt.isDisposed));
   } finally { f.terminal.dispose(); }
 });
+
+test('finds the prompt above and below a line', async () => {
+  const f = fixture({ scrollback: 100 });
+  try {
+    await f.write(`${A}$ ${'\r\n'.repeat(10)}${A}$ ${'\r\n'.repeat(10)}${A}$ `);
+    assert.deepEqual(f.commands.blocks.map(b => b.prompt.line), [0, 10, 20]);
+    assert.equal(f.commands.promptAbove(10), 0);
+    assert.equal(f.commands.promptAbove(15), 10);
+    assert.equal(f.commands.promptAbove(0), undefined);
+    assert.equal(f.commands.promptBelow(10), 20);
+    assert.equal(f.commands.promptBelow(20), undefined);
+  } finally { f.terminal.dispose(); }
+});
