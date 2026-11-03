@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { PreferencesStore, validatePreferences, visibleBounds } from '../src/main/preferences.ts';
+import { PreferencesStore, defaultPreferences, validatePreferences, visibleBounds } from '../src/main/preferences.ts';
 
 test('recovers from corrupt settings and persists only validated preferences', () => {
   const directory = mkdtempSync(join(tmpdir(), 'y-term-settings-'));
@@ -45,4 +45,11 @@ test('persists sidebar width and accepts settings from before resizing was suppo
       assert.throws(() => store.save({ ...store.get(), sidebarWidth }), /sidebar/i);
     }
   } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('enables shell integration by default and requires a boolean', () => {
+  assert.equal(defaultPreferences().shellIntegration, true);
+  assert.equal(validatePreferences({}).shellIntegration, true);
+  assert.equal(validatePreferences({ shellIntegration: false }).shellIntegration, false);
+  assert.throws(() => validatePreferences({ shellIntegration: 'yes' }), /shell integration/i);
 });

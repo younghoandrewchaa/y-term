@@ -27,6 +27,7 @@ export interface Preferences {
   theme: 'dark' | 'light';
   scrollback: number;
   shell: string;
+  shellIntegration: boolean;
   cwd: string;
   sidebarWidth?: number;
   bounds?: WindowBounds;

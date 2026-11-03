@@ -294,7 +294,8 @@ function applyPreferences(): void {
 function openSettings(): void {
   for (const [key, value] of Object.entries(preferences)) {
     const input = settingsForm.elements.namedItem(key);
-    if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) input.value = String(value);
+    if (input instanceof HTMLInputElement && input.type === 'checkbox') input.checked = value === true;
+    else if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) input.value = String(value);
   }
   element('settings-error').textContent = '';
   if (!settings.open) settings.showModal();
@@ -337,7 +338,7 @@ settings.addEventListener('close', () => { active?.view.focus(); if (active) cle
 settingsForm.onsubmit = event => {
   event.preventDefault();
   const values = new FormData(settingsForm);
-  const value = { ...preferences, ...Object.fromEntries(values), fontSize: Number(values.get('fontSize')), scrollback: Number(values.get('scrollback')) } as Preferences;
+  const value = { ...preferences, ...Object.fromEntries(values), fontSize: Number(values.get('fontSize')), scrollback: Number(values.get('scrollback')), shellIntegration: values.has('shellIntegration') } as Preferences;
   void window.terminal.savePreferences(value).then(saved => {
     preferences = saved; applyPreferences(); settings.close(); report('Settings saved. New tabs use the configured shell and directory.');
   }).catch(error => { element('settings-error').textContent = String(error); });
