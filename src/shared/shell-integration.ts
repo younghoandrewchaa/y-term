@@ -10,7 +10,7 @@ export function parseOsc133(data: string): ShellMark | undefined {
   if (data === 'B') return { kind: 'input' };
   if (data === 'C') return { kind: 'output' };
   if (data === 'D') return { kind: 'finished' };
-  const code = /^D;(\d+)$/.exec(data);
+  const code = /^D;(\d{1,3})$/.exec(data);
   return code ? { kind: 'finished', exitCode: Number(code[1]) } : undefined;
 }
 

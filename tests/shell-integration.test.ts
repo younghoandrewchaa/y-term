@@ -8,7 +8,7 @@ test('parses OSC 133 marks', () => {
   assert.deepEqual(parseOsc133('C'), { kind: 'output' });
   assert.deepEqual(parseOsc133('D;1'), { kind: 'finished', exitCode: 1 });
   assert.deepEqual(parseOsc133('D'), { kind: 'finished' });
-  for (const bad of ['', 'Z', 'D;x', 'D;-1', 'A;extra=1;'.repeat(1000)]) assert.equal(parseOsc133(bad), undefined);
+  for (const bad of ['', 'Z', 'D;x', 'D;-1', 'D;1234', 'D;' + '9'.repeat(400), 'A;extra=1;'.repeat(1000)]) assert.equal(parseOsc133(bad), undefined);
 });
 
 test('unescapes command lines and requires the session nonce', () => {

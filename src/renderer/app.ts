@@ -340,7 +340,7 @@ settingsForm.onsubmit = event => {
   const values = new FormData(settingsForm);
   const value = { ...preferences, ...Object.fromEntries(values), fontSize: Number(values.get('fontSize')), scrollback: Number(values.get('scrollback')), shellIntegration: values.has('shellIntegration') } as Preferences;
   void window.terminal.savePreferences(value).then(saved => {
-    preferences = saved; applyPreferences(); settings.close(); report('Settings saved. New tabs use the configured shell and directory.');
+    preferences = saved; applyPreferences(); settings.close(); report('Settings saved. New tabs use the configured shell, directory and shell integration setting.');
   }).catch(error => { element('settings-error').textContent = String(error); });
 };
 findInput.oninput = () => find();
