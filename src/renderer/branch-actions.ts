@@ -6,6 +6,7 @@ import type { CommandBlock } from './shell-integration.ts';
 export interface BranchLine { line: number; name: string; end: number }
 
 const MAX_BRANCHES = 500;
+const COPY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" d="M5.5 5.5h8v8h-8zM10.5 3V2.5h-8v8H3"/></svg>';
 const TRASH = '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4M6.6 6.5v4.5M9.4 6.5v4.5"/></svg>';
 
 /** Deletable-looking lines of a successful `git branch` block; `end` is the cell after the name. */
@@ -29,10 +30,10 @@ export function branchLines(terminal: Pick<Terminal, 'buffer' | 'cols'>, block: 
   return lines;
 }
 
-/** Adds a delete button after each branch that Git confirms exists in the tab's repository. */
+/** Adds copy and delete buttons after each branch that Git confirms exists in the tab's repository. */
 export async function decorateBranches(terminal: Terminal, block: CommandBlock, list: () => Promise<BranchList | undefined>,
   remove: (root: string, name: string) => Promise<boolean>, status: (message: string) => void): Promise<void> {
-  const lines = branchLines(terminal, block).filter(({ end }) => end + 3 <= terminal.cols);
+  const lines = branchLines(terminal, block).filter(({ end }) => end + 5 <= terminal.cols);
   if (!lines.length) return;
   const buffer = terminal.buffer.active;
   const cursor = buffer.baseY + buffer.cursorY;
@@ -49,17 +50,40 @@ export async function decorateBranches(terminal: Terminal, block: CommandBlock, 
 
 function addButton(terminal: Terminal, marker: IMarker, root: string, name: string, end: number,
   remove: (root: string, name: string) => Promise<boolean>, status: (message: string) => void): void {
-  const button = terminal.registerDecoration({ marker, x: end + 1, width: 2 });
+  const button = terminal.registerDecoration({ marker, x: end + 1, width: 4 });
   if (!button) { marker.dispose(); return; }
   let busy = false;
   button.onRender(element => {
-    if (element.classList.contains('branch-delete')) return;
-    element.classList.add('branch-delete');
-    element.title = `Delete branch ${name}`;
-    element.innerHTML = TRASH;
+    if (element.classList.contains('branch-actions')) return;
+    element.classList.add('branch-actions');
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'branch-copy';
+    copy.title = `Copy branch ${name}`;
+    copy.setAttribute('aria-label', copy.title);
+    copy.innerHTML = COPY;
+    const removeButton = document.createElement('button');
+    removeButton.type = 'button';
+    removeButton.className = 'branch-delete';
+    removeButton.title = `Delete branch ${name}`;
+    removeButton.setAttribute('aria-label', removeButton.title);
+    removeButton.innerHTML = TRASH;
+    element.append(copy, removeButton);
     // Keep the click from starting a text selection.
     element.addEventListener('mousedown', event => { event.preventDefault(); event.stopPropagation(); });
-    element.addEventListener('click', event => {
+    copy.addEventListener('click', event => {
+      event.stopPropagation();
+      window.terminal.copyBranch(name).then(() => {
+        copy.title = `Copied branch ${name}`;
+        copy.classList.add('branch-copied');
+        setTimeout(() => {
+          copy.title = `Copy branch ${name}`;
+          copy.classList.remove('branch-copied');
+        }, 1500);
+      })
+        .catch(error => status(String(error)));
+    });
+    removeButton.addEventListener('click', event => {
       event.stopPropagation();
       if (busy) return;
       busy = true;

@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
 import type { IpcMainEvent, IpcMainInvokeEvent, WebContents } from 'electron';
 import { notificationText } from '../shared/attention.ts';
 import type { AttentionBadge } from './attention.ts';
@@ -72,6 +72,11 @@ export function registerTerminalIpc(manager: SessionManager, preferences: Prefer
     const ownerId = owner(event);
     const cwd = manager.directory(ownerId, id);
     return cwd ? await git.branches(ownerId, cwd) : undefined;
+  });
+  ipcMain.handle('terminal:copy-branch', async (event, name) => {
+    owner(event);
+    if (typeof name !== 'string' || !name || /\s|[\x00-\x1f\x7f]/.test(name)) throw new Error('Invalid branch.');
+    await clipboard.writeText(name);
   });
   // The root came from 'terminal:branches'; Git checks the branch again before deleting it.
   ipcMain.handle('terminal:delete-branch', async (event, root, name) => {

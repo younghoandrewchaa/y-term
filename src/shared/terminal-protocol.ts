@@ -63,6 +63,7 @@ export interface TerminalAPI {
   openFile(id: string, path: string, plain?: boolean): Promise<void>;
   /** Local branches of the repository that contains the tab's current directory. */
   listBranches(id: string): Promise<BranchList | undefined>;
+  copyBranch(name: string): Promise<void>;
   /** Asks for confirmation, then deletes the branch; resolves false if the user cancels. */
   deleteBranch(root: string, name: string): Promise<boolean>;
   setAttentionCount(count: number): void;
