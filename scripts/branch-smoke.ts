@@ -33,9 +33,16 @@ export async function verifyBranchDelete(application: ElectronApplication, page:
     const buttons = page.locator(`${panel} .branch-delete`);
     await buttons.nth(1).waitFor();
     assert.equal(await buttons.count(), 2, 'only branches that are not checked out get a button');
+    const copies = page.locator(`${panel} .branch-copy`);
+    assert.equal(await copies.count(), 2, 'each branch action includes a copy button');
+    await page.locator(`${panel} .branch-copy[title="Copy branch smoke-merged"]`).click();
+    await page.locator(`${panel} .branch-copy[title="Copied branch smoke-merged"]`).waitFor();
+    assert.equal(await application.evaluate(({ clipboard }) => clipboard.readText()), 'smoke-merged');
+    assert.notEqual(git('branch', '--list', 'smoke-merged'), '', 'copying leaves the branch intact');
     await page.locator(`${panel} .branch-delete[title="Delete branch smoke-merged"]`).click();
     await page.locator(`${panel} .branch-deleted`).waitFor();
     assert.equal(await buttons.count(), 1);
+    assert.equal(await copies.count(), 1, 'deleting a branch removes both actions');
     assert.equal(git('branch', '--list', 'smoke-merged'), '');
     assert.notEqual(git('branch', '--list', 'smoke-other'), '');
     const messages = await application.evaluate(() => (globalThis as unknown as { branchSmoke: { messages: string[] } }).branchSmoke.messages);
