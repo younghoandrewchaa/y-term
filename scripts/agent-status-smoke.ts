@@ -5,6 +5,10 @@ import type { ElectronApplication, Page } from 'playwright';
 
 /** Real PTY output → xterm OSC parser → sidebar and attention state. */
 export async function verifyAgentStatus(application: ElectronApplication, page: Page): Promise<void> {
+  const openSettings = async () => {
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('terminal:action', 'settings'));
+    await page.locator('#settings[open]').waitFor();
+  };
   await application.evaluate(({ ipcMain, Notification }) => {
     const state = { active: '', notifications: 0, shown: [] as InstanceType<typeof Notification>[],
       show: Notification.prototype.show, supported: Notification.isSupported, listener: (_event: unknown, _ids: string[], active: string) => { state.active = active; },
@@ -102,7 +106,7 @@ print('YTERM_7501_QUERY_OK')`;
     await emit(id, 'state=blocked:id=worker'); await emit(id, 'state=clear:id=worker');
     await emit(otherId, 'state=working'); await state(other, 'working');
     assert.equal(await agent.getAttribute('data-agent-status'), 'working');
-    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await openSettings();
     await emit(id, 'state=idle'); await state(agent, 'done');
     await page.getByRole('button', { name: 'Cancel', exact: true }).click(); await state(agent, 'idle');
 
@@ -118,11 +122,11 @@ print('YTERM_7501_QUERY_OK')`;
     if (process.env.Y_TERM_SCREENSHOTS) {
       await mkdir(process.env.Y_TERM_SCREENSHOTS, { recursive: true });
       await page.screenshot({ path: join(process.env.Y_TERM_SCREENSHOTS, 'agent-status-dark.png') });
-      await page.getByRole('button', { name: 'Settings', exact: true }).click();
+      await openSettings();
       await page.locator('select[name=theme]').selectOption('light');
       await page.getByRole('button', { name: 'Save', exact: true }).click();
       await page.screenshot({ path: join(process.env.Y_TERM_SCREENSHOTS, 'agent-status-light.png') });
-      await page.getByRole('button', { name: 'Settings', exact: true }).click();
+      await openSettings();
       await page.locator('select[name=theme]').selectOption('dark');
       await page.getByRole('button', { name: 'Save', exact: true }).click();
     }

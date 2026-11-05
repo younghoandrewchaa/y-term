@@ -38,7 +38,8 @@ export interface Preferences {
 export interface RestoredTab { cwd?: string; resume?: AgentResume }
 /** Tabs for one window after an update restart, in sidebar order. */
 export interface RestoredTabs { tabs: RestoredTab[]; active: number }
-export type MenuAction = 'new-tab' | 'close-tab' | 'find' | 'settings' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'clear' | 'next-tab' | 'previous-tab' | 'toggle-sidebar';
+export type MenuAction = 'new-tab' | 'close-tab' | 'find' | 'settings' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'clear' | 'next-tab' | 'previous-tab' | 'toggle-sidebar'
+  | 'select-tab-1' | 'select-tab-2' | 'select-tab-3' | 'select-tab-4' | 'select-tab-5' | 'select-tab-6' | 'select-tab-7' | 'select-tab-8' | 'select-tab-9';
 export interface TerminalAPI {
   getWindowActivity(): Promise<boolean>;
   onWindowActivity(listener: (active: boolean) => void): () => void;
