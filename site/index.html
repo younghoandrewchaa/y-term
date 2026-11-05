@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Y-Term — a focused terminal for macOS</title>
-  <meta name="description" content="Y-Term is a fast, focused macOS terminal for Apple Silicon with tabs, clickable file links, one-click VS Code diffs, and in-app updates.">
+  <title>Y-Term — your terminal, augmented</title>
+  <meta name="description" content="Y-Term augments your macOS terminal with icons and one-click commands beside your output: git branch actions, VS Code diffs, agent status, and clickable links. For Apple Silicon.">
   <link rel="icon" href="icon.png">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -22,8 +22,8 @@
   <main>
     <section class="hero">
       <img class="hero-icon" src="icon.png" alt="Y-Term icon" width="96" height="96">
-      <h1>A focused terminal for macOS.</h1>
-      <p class="lede">Y-Term is a quiet, native-feeling terminal for Apple Silicon. Real shells, tabs that remember where you were, and changed files that open as diffs in VS Code. Nothing more than you need.</p>
+      <h1>Your terminal, augmented.</h1>
+      <p class="lede">Y-Term is a native-feeling terminal for Apple Silicon that keeps your real shell and adds to it. Icons and one-click commands appear right beside your output: copy or delete a branch from <code>git branch</code>, open a changed file as a VS Code diff, and see at a glance which coding agent needs you.</p>
       <div class="cta">
         <a class="button primary" href="https://github.com/younghoandrewchaa/y-term/releases/latest">Download for Apple Silicon</a>
         <a class="button" href="https://github.com/younghoandrewchaa/y-term">View source</a>
@@ -33,29 +33,29 @@
       <div class="window" aria-hidden="true">
         <aside class="win-sidebar">
           <div class="lights"><span></span><span></span><span></span></div>
-          <div class="win-heading">Sessions <span>3</span></div>
-          <div class="win-tab active"><i class="dot"></i>zsh</div>
-          <div class="win-tab"><i class="dot agent"></i>claude</div>
-          <div class="win-tab"><i class="dot attention"></i>npm test</div>
-          <div class="win-version">Y-Term 0.1.7</div>
+          <div class="win-heading">Sessions <span>4</span></div>
+          <div class="win-tab agent" data-status="blocked"><svg viewBox="0 0 24 24"><path d="M12 3c.6 4.6 2.4 6.4 7 7-4.6.6-6.4 2.4-7 7-.6-4.6-2.4-6.4-7-7 4.6-.6 6.4-2.4 7-7Z"/><path d="M19 16v4M17 18h4"/></svg><span class="win-tab-text">Codex<small>api<b>Blocked</b></small></span></div>
+          <div class="win-tab agent" data-status="done"><svg viewBox="0 0 24 24"><path d="M12 3c.6 4.6 2.4 6.4 7 7-4.6.6-6.4 2.4-7 7-.6-4.6-2.4-6.4-7-7 4.6-.6 6.4-2.4 7-7Z"/><path d="M19 16v4M17 18h4"/></svg><span class="win-tab-text">Claude Code<small>site<b>Done</b></small></span></div>
+          <div class="win-tab agent" data-status="working"><svg viewBox="0 0 24 24"><path d="M12 3c.6 4.6 2.4 6.4 7 7-4.6.6-6.4 2.4-7 7-.6-4.6-2.4-6.4-7-7 4.6-.6 6.4-2.4 7-7Z"/><path d="M19 16v4M17 18h4"/></svg><span class="win-tab-text">Claude Code<small>y-term<b>Working</b></small></span></div>
+          <div class="win-tab active"><svg viewBox="0 0 24 24"><path d="m5 7 5 5-5 5M13 17h6"/></svg><span class="win-tab-text">zsh<small>y-term</small></span></div>
+          <div class="win-version">Y-Term 0.1.15</div>
         </aside>
         <div class="win-main">
           <div class="win-header"><span>zsh · Local</span><span class="muted">~/github/y-term</span></div>
-<pre class="win-term"><span class="p">~/github/y-term</span> <span class="g">main</span> ❯ npm test
-
-<span class="g">✔</span> session-manager › inherits the active cwd
-<span class="g">✔</span> file-links › opens relative paths
-<span class="g">✔</span> git › compares changes with the staged version
-<span class="g">✔</span> updates › verifies the signed manifest
-
-<span class="muted">ℹ tests 21  pass 21  fail 0</span>
-<span class="p">~/github/y-term</span> <span class="g">main</span> ❯ <span class="cursor"> </span></pre>
+<pre class="win-term"><span class="p">~/github/y-term</span> <span class="g">main</span> ❯ git branch
+  agent-status <span class="branch-actions"><i class="copied" title="Copied"><svg viewBox="0 0 16 16"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" d="M5.5 5.5h8v8h-8zM10.5 3V2.5h-8v8H3"/></svg></i><i><svg viewBox="0 0 16 16"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4M6.6 6.5v4.5M9.4 6.5v4.5"/></svg></i></span>
+  <span class="deleted">branch-delete</span>
+  copy-branch-name <span class="branch-actions"><i><svg viewBox="0 0 16 16"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" d="M5.5 5.5h8v8h-8zM10.5 3V2.5h-8v8H3"/></svg></i><i><svg viewBox="0 0 16 16"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4M6.6 6.5v4.5M9.4 6.5v4.5"/></svg></i></span>
+<span class="g">* main</span>
+  shell-integration <span class="branch-actions"><i><svg viewBox="0 0 16 16"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" d="M5.5 5.5h8v8h-8zM10.5 3V2.5h-8v8H3"/></svg></i><i class="hover"><svg viewBox="0 0 16 16"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4M6.6 6.5v4.5M9.4 6.5v4.5"/></svg></i></span>
+<span class="p">~/github/y-term</span> <span class="g">main</span> ❯ git switch agent-status<span class="cursor"> </span></pre>
         </div>
       </div>
     </section>
 
     <section id="features">
-      <h2>Built for everyday terminal work</h2>
+      <h2>Augment the terminal, don't replace it</h2>
+      <p class="intro">Your shell, your tools, and your dotfiles stay exactly as they are. Y-Term watches what your commands print and adds small icons and custom commands where they help, like a copy button beside a branch name or a diff behind a file path. Nothing runs until you click it, and anything destructive asks first. More commands are on the way.</p>
       <div class="grid">
         <article>
           <h3>Real shells, real PTYs</h3>
@@ -74,8 +74,20 @@
           <p><kbd>⌘</kbd>-click URLs to open them in your browser, and local file paths (relative, quoted, or <code>file:</code> links) in their default macOS app.</p>
         </article>
         <article>
+          <h3>Copy and delete branches</h3>
+          <p>After <code>git branch</code> in zsh, each local branch gets copy and delete buttons. Copy puts the name on your clipboard; delete confirms first, runs <code>git branch -d</code>, and offers <code>-D</code> only if the branch isn't merged.</p>
+        </article>
+        <article>
+          <h3>Agent status at a glance</h3>
+          <p>Agents that report <a href="https://www.superlogical.com/rex/docs/build/program-status">OSC 7501 status</a> show <strong>Working</strong>, <strong>Blocked</strong>, <strong>Done</strong>, or <strong>Idle</strong> beside their tab. Blocked and Done tabs add to the Dock badge, so you know which agent needs you.</p>
+        </article>
+        <article>
           <h3>Friendly to coding agents</h3>
-          <p>Shift+Enter inserts newlines in agents that support CSI u, pasted images reach tools that read the clipboard, and running agents are marked in the sidebar.</p>
+          <p>Shift+Enter inserts newlines in agents that support CSI u, and pasted images reach tools that read the clipboard. After an update, Claude Code and Codex tabs resume their conversations.</p>
+        </article>
+        <article>
+          <h3>Shell integration</h3>
+          <p>An optional zsh integration marks prompts and commands without touching your dotfiles. Jump between prompts with <kbd>⌘↑</kbd> and <kbd>⌘↓</kbd>.</p>
         </article>
         <article>
           <h3>Notifications that get your attention</h3>
@@ -105,6 +117,7 @@
           <tr><td><kbd>⌃Tab</kbd> / <kbd>⇧⌘]</kbd></td><td>Next tab</td></tr>
           <tr><td><kbd>⌃⇧Tab</kbd> / <kbd>⇧⌘[</kbd></td><td>Previous tab</td></tr>
           <tr><td><kbd>⌘B</kbd></td><td>Show or hide the sidebar</td></tr>
+          <tr><td><kbd>⌘↑</kbd> / <kbd>⌘↓</kbd></td><td>Previous or next prompt (zsh with shell integration)</td></tr>
           <tr><td><kbd>⌘F</kbd></td><td>Search the terminal</td></tr>
           <tr><td><kbd>⌘+</kbd> / <kbd>⌘−</kbd> / <kbd>⌘0</kbd></td><td>Bigger, smaller, and reset font size</td></tr>
           <tr><td><kbd>⌘K</kbd></td><td>Clear the display</td></tr>

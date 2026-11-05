@@ -14,6 +14,7 @@
   --green: #3dd68c;
   --agent: #c39bff;
   --attention: #e8c47f;
+  --danger: #f28b91;
   --mono: ui-monospace, "SF Mono", Menlo, monospace;
 }
 @media (prefers-color-scheme: light) {
@@ -32,6 +33,7 @@
     --green: #237a51;
     --agent: #7f4fc2;
     --attention: #896017;
+    --danger: #b53847;
   }
 }
 
@@ -117,19 +119,33 @@ h3 { font-size: 17px; margin: 0 0 8px; }
 }
 .win-tab { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; color: var(--muted); }
 .win-tab.active { background: var(--selected); color: var(--bright); }
-.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
-.dot.agent { background: var(--agent); }
-.dot.attention { background: var(--attention); }
+.win-tab-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.win-tab-text small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.win-tab-text b { font-weight: 400; }
+.win-tab-text b::before { content: ' · '; color: var(--muted); }
+.win-tab[data-status=working] b { color: var(--accent); }
+.win-tab[data-status=blocked] b { color: var(--attention); }
+.win-tab[data-status=done] b { color: var(--green); }
+.win-tab svg { width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.win-tab.active svg { color: var(--accent); }
+.win-tab.agent svg { color: var(--agent); }
 .win-version { margin-top: auto; padding: 0 8px; font-size: 11px; color: var(--muted); }
 .win-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .win-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--bright); }
 .win-term { flex: 1; margin: 0; padding: 16px; font-size: 12.5px; line-height: 1.55; overflow: hidden; }
 .win-term .p { color: var(--accent); }
 .win-term .g { color: var(--green); }
+.branch-actions { display: inline-flex; gap: 2px; vertical-align: middle; color: var(--muted); }
+.branch-actions i { display: inline-flex; padding: 1px 2px; border-radius: 4px; }
+.branch-actions .hover { background: var(--raised); color: var(--danger); }
+.branch-actions .copied { color: var(--green); }
+.branch-actions svg { width: 13px; height: 13px; }
+.win-term .deleted { color: var(--muted); text-decoration: line-through; }
 .cursor { background: var(--text); animation: blink 1.1s steps(1) infinite; }
 @keyframes blink { 50% { background: transparent; } }
 @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
 
+.intro { max-width: 720px; margin: -12px 0 28px; color: var(--muted); font-size: 17px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 .grid article {
   padding: 22px; border: 1px solid var(--border); border-radius: 12px; background: var(--raised);
