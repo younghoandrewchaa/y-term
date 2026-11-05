@@ -10,3 +10,15 @@ export function insertAfterOpener<T>(items: T[], item: T, source: T | undefined,
   items.splice(index, 0, item);
   return index;
 }
+
+/** ⌘1–⌘8 pick a tab by position and ⌘9 picks the last one, as in Chrome and Safari. */
+export function shortcutTabIndex(digit: number, count: number): number | undefined {
+  const index = digit === 9 ? count - 1 : digit - 1;
+  return index >= 0 && index < count ? index : undefined;
+}
+
+/** The digit shown on a tab while ⌘ is held: the inverse of `shortcutTabIndex`. */
+export function tabShortcutDigit(index: number, count: number): number | undefined {
+  if (index < 8) return index + 1;
+  return index === count - 1 ? 9 : undefined;
+}

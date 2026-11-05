@@ -8,7 +8,7 @@ import type { MenuAction, Preferences, RestoredTab } from '../shared/terminal-pr
 import type { UpdateState } from '../shared/update-protocol.ts';
 import { agentStatusLabel, reduceAgentStatus } from '../shared/agent-status.ts';
 import type { AgentStatusEvent, AgentStatusState } from '../shared/agent-status.ts';
-import { insertAfterOpener } from '../shared/tab-order.ts';
+import { insertAfterOpener, shortcutTabIndex, tabShortcutDigit } from '../shared/tab-order.ts';
 
 // A file dropped outside a terminal must not navigate away from the app.
 for (const type of ['dragover', 'drop'] as const) {
@@ -27,7 +27,7 @@ const settings = element<HTMLDialogElement>('settings');
 const settingsForm = element<HTMLFormElement>('settings-form');
 const findBar = element('find-bar');
 const findInput = element<HTMLInputElement>('find-input');
-interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string; agent?: string; agentPid?: number; attention: boolean; agentStatus: AgentStatusState; statusLabel: HTMLElement; lastStatusNotification: number; opener?: Tab }
+interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string; agent?: string; agentPid?: number; attention: boolean; agentStatus: AgentStatusState; statusLabel: HTMLElement; lastStatusNotification: number; opener?: Tab; number: HTMLElement }
 const tabs: Tab[] = [];
 let active: Tab | undefined;
 let preferences: Preferences;
@@ -37,6 +37,7 @@ let activityReceived = false;
 window.terminal.onWindowActivity(value => {
   activityReceived = true;
   windowActive = value;
+  if (!value) showTabNumbers(false);
   if (active && isViewed(active)) clearAttention(active);
 });
 void window.terminal.getWindowActivity().then(value => {
@@ -108,6 +109,30 @@ element<HTMLButtonElement>('update-button').onclick = () => {
 
 function report(value: unknown): void { message.textContent = String(value); }
 function directoryName(cwd: string): string { return cwd.split('/').filter(Boolean).pop() || '/'; }
+// ⌘1–⌘9 shortcuts: label each tab with its digit, shown while ⌘ is held.
+function renumberTabs(): void {
+  tabs.forEach((tab, index) => {
+    const digit = tabShortcutDigit(index, tabs.length);
+    tab.number.textContent = digit === undefined ? '' : String(digit);
+    if (digit === undefined) tab.button.removeAttribute('aria-keyshortcuts');
+    else tab.button.setAttribute('aria-keyshortcuts', `Meta+${digit}`);
+  });
+}
+let tabNumbersTimer: ReturnType<typeof setTimeout> | undefined;
+function showTabNumbers(show: boolean): void {
+  clearTimeout(tabNumbersTimer);
+  tabNumbersTimer = undefined;
+  if (show) element('sidebar').dataset.showTabNumbers = '';
+  else delete element('sidebar').dataset.showTabNumbers;
+}
+// Capture phase: xterm handles keys on its textarea and must not hide them from this.
+window.addEventListener('keydown', event => {
+  if (event.key === 'Meta' && !event.shiftKey && !event.ctrlKey && !event.altKey) {
+    if (!event.repeat && tabNumbersTimer === undefined) tabNumbersTimer = setTimeout(() => showTabNumbers(true), 300);
+  } else showTabNumbers(false);
+}, true);
+window.addEventListener('keyup', event => { if (event.key === 'Meta') showTabNumbers(false); }, true);
+window.addEventListener('blur', () => showTabNumbers(false));
 function updateHeader(): void {
   element('active-title').textContent = active?.label.textContent || 'Y-Term';
   element('active-directory').textContent = active?.cwd || '';
@@ -196,7 +221,8 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   const initialCwd = restore ? restore.cwd ?? preferences.cwd : active?.cwd || preferences.cwd;
   directory.textContent = directoryName(initialCwd);
   const text = document.createElement('span'); text.className = 'tab-text'; text.append(label, meta);
-  button.append(element<HTMLTemplateElement>('session-icon').content.cloneNode(true), text);
+  const number = document.createElement('span'); number.className = 'tab-number'; number.setAttribute('aria-hidden', 'true');
+  button.append(number, element<HTMLTemplateElement>('session-icon').content.cloneNode(true), text);
   const close = document.createElement('button'); close.className = 'tab-close'; close.textContent = '×'; close.setAttribute('aria-label', 'Close tab');
   const indicator = document.createElement('span'); indicator.className = 'tab-attention'; indicator.setAttribute('aria-hidden', 'true');
   const panel = document.createElement('section'); panel.className = 'terminal-panel'; panel.id = `panel-${n}`;
@@ -229,9 +255,10 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   }, signal => needsAttention(tab, signal), report => updateAgentStatus(tab, { type: 'report', report, viewed: isViewed(tab) }),
   () => updateAgentStatus(tab, { type: 'reset' }));
   const tab: Tab = { button, label, wrapper, panel, view, cwd: initialCwd, shell: preferences.shell.split('/').pop() || preferences.shell,
-    attention: false, agentStatus: { unseenCompletion: false }, statusLabel, lastStatusNotification: 0, opener: source };
+    attention: false, agentStatus: { unseenCompletion: false }, statusLabel, lastStatusNotification: 0, opener: source, number };
   const index = insertAfterOpener(tabs, tab, source, item => item.opener);
   tablist.insertBefore(wrapper, tablist.children[index] ?? null);
+  renumberTabs();
   view.terminal.onData(() => clearAttention(tab));
   button.onclick = () => select(tab);
   close.onclick = () => closeTab(tab);
@@ -256,6 +283,7 @@ function closeTab(tab = active): void {
   if (!tab) return;
   const index = tabs.indexOf(tab); if (index === -1) return;
   tabs.splice(index, 1); tab.wrapper.remove(); tab.panel.remove();
+  renumberTabs();
   publishAttention();
   void tab.view.close().catch(report);
   publishLayout();
@@ -308,6 +336,10 @@ function action(command: MenuAction): void {
   else if (command === 'settings') openSettings();
   else if (command === 'next-tab') cycle(1);
   else if (command === 'previous-tab') cycle(-1);
+  else if (command.startsWith('select-tab-')) {
+    const index = shortcutTabIndex(Number(command.slice(-1)), tabs.length);
+    if (index !== undefined) select(tabs[index]);
+  }
   else if (command === 'clear') active?.view.terminal.clear();
   else if (command === 'find') {
     findBar.hidden = false; findInput.focus(); findInput.select();

@@ -115,6 +115,9 @@ function setMenu(): void {
       action('Previous Tab', 'Ctrl+Shift+Tab', 'previous-tab'),
       { ...action('Next Tab', 'Cmd+Shift+]', 'next-tab'), visible: false, acceleratorWorksWhenHidden: true },
       { ...action('Previous Tab', 'Cmd+Shift+[', 'previous-tab'), visible: false, acceleratorWorksWhenHidden: true },
+      { type: 'separator' },
+      ...([1, 2, 3, 4, 5, 6, 7, 8, 9] as const).map(digit =>
+        ({ ...action(digit === 9 ? 'Last Tab' : `Tab ${digit}`, `Cmd+${digit}`, `select-tab-${digit}`), id: `select-tab-${digit}` })),
       { type: 'separator' }, { role: 'front' },
     ] },
   ]));

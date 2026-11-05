@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { insertAfterOpener } from '../src/shared/tab-order.ts';
+import { insertAfterOpener, shortcutTabIndex, tabShortcutDigit } from '../src/shared/tab-order.ts';
 
 interface Node { id: string; opener?: Node }
 const node = (id: string, opener?: Node): Node => ({ id, opener });
@@ -40,4 +40,25 @@ test('children of a closed tab do not join another tab\'s run', () => {
   const items = [a, node('orphan', closed)];
   insertAfterOpener(items, node('b', a), a, openerOf);
   assert.deepEqual(ids(items), ['a', 'b', 'orphan']);
+});
+
+test('⌘1–⌘8 pick a position and ⌘9 picks the last tab', () => {
+  assert.equal(shortcutTabIndex(1, 3), 0);
+  assert.equal(shortcutTabIndex(3, 3), 2);
+  assert.equal(shortcutTabIndex(4, 3), undefined);
+  assert.equal(shortcutTabIndex(9, 3), 2);
+  assert.equal(shortcutTabIndex(9, 12), 11);
+  assert.equal(shortcutTabIndex(8, 12), 7);
+  assert.equal(shortcutTabIndex(1, 0), undefined);
+  assert.equal(shortcutTabIndex(9, 0), undefined);
+});
+
+test('the first eight tabs and the last tab show their shortcut digit', () => {
+  assert.deepEqual([0, 1, 2].map(index => tabShortcutDigit(index, 3)), [1, 2, 3]);
+  assert.deepEqual([0, 7, 8, 9, 10, 11].map(index => tabShortcutDigit(index, 12)), [1, 8, undefined, undefined, undefined, 9]);
+  assert.equal(tabShortcutDigit(8, 9), 9);
+  for (let count = 1; count <= 12; count++) for (let index = 0; index < count; index++) {
+    const digit = tabShortcutDigit(index, count);
+    if (digit !== undefined) assert.equal(shortcutTabIndex(digit, count), index);
+  }
 });
