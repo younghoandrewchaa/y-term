@@ -8,7 +8,7 @@ import type { MenuAction, Preferences, RestoredTab } from '../shared/terminal-pr
 import type { UpdateState } from '../shared/update-protocol.ts';
 import { agentStatusLabel, reduceAgentStatus } from '../shared/agent-status.ts';
 import type { AgentStatusEvent, AgentStatusState } from '../shared/agent-status.ts';
-import { compareTabs } from '../shared/tab-order.ts';
+import { insertAfterOpener } from '../shared/tab-order.ts';
 
 // A file dropped outside a terminal must not navigate away from the app.
 for (const type of ['dragover', 'drop'] as const) {
@@ -27,7 +27,7 @@ const settings = element<HTMLDialogElement>('settings');
 const settingsForm = element<HTMLFormElement>('settings-form');
 const findBar = element('find-bar');
 const findInput = element<HTMLInputElement>('find-input');
-interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string; agent?: string; agentPid?: number; attention: boolean; agentStatus: AgentStatusState; statusLabel: HTMLElement; lastStatusNotification: number }
+interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string; agent?: string; agentPid?: number; attention: boolean; agentStatus: AgentStatusState; statusLabel: HTMLElement; lastStatusNotification: number; opener?: Tab }
 const tabs: Tab[] = [];
 let active: Tab | undefined;
 let preferences: Preferences;
@@ -108,18 +108,6 @@ element<HTMLButtonElement>('update-button').onclick = () => {
 
 function report(value: unknown): void { message.textContent = String(value); }
 function directoryName(cwd: string): string { return cwd.split('/').filter(Boolean).pop() || '/'; }
-function sortTabs(): void {
-  const key = (tab: Tab) => ({ directory: directoryName(tab.cwd), agent: Boolean(tab.agent) });
-  const before = active && tabs.indexOf(active);
-  tabs.sort((a, b) => compareTabs(key(a), key(b)));
-  tabs.forEach((tab, index) => {
-    const current = tablist.children[index];
-    if (current !== tab.wrapper) tablist.insertBefore(tab.wrapper, current || null);
-  });
-  // Moving tabs must not scroll the selected one out of view.
-  if (active && tabs.indexOf(active) !== before) active.button.scrollIntoView({ block: 'nearest' });
-  publishLayout();
-}
 function updateHeader(): void {
   element('active-title').textContent = active?.label.textContent || 'Y-Term';
   element('active-directory').textContent = active?.cwd || '';
@@ -196,7 +184,8 @@ function select(tab: Tab): void {
 async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   if (tabs.length >= 32) { report('Close a tab before opening another (maximum 32 tabs).'); return; }
   // A restored tab starts in its saved directory instead of the active tab's.
-  const sourceId = restore ? undefined : active?.view.sessionId;
+  const source = restore ? undefined : active;
+  const sourceId = source?.view.sessionId;
   const n = ++counter;
   const wrapper = document.createElement('div'); wrapper.className = 'tab'; wrapper.setAttribute('role', 'presentation');
   const button = document.createElement('button'); button.setAttribute('role', 'tab'); button.id = `tab-${n}`;
@@ -216,7 +205,7 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   const restart = document.createElement('button'); restart.textContent = 'New shell'; restart.onclick = () => { void newTab(); };
   const statusText = document.createElement('span'); status.append(statusText, restart);
   const host = document.createElement('div'); host.className = 'terminal-host'; panel.append(status, host);
-  wrapper.append(button, indicator, close); tablist.append(wrapper); panels.append(panel);
+  wrapper.append(button, indicator, close); panels.append(panel);
   const view = new TerminalView(host, preferences, title => {
     label.textContent = title || `Shell ${n}`;
     button.title = label.textContent;
@@ -226,14 +215,11 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   }, cwd => {
     tab.cwd = cwd;
     directory.textContent = directoryName(cwd);
-    sortTabs();
     if (active === tab) updateHeader();
   }, (agent, agentPid) => {
     if (tab.agent && (tab.agent !== agent || tab.agentPid !== agentPid)) updateAgentStatus(tab, { type: 'reset' });
-    const agentChanged = Boolean(agent) !== Boolean(tab.agent);
     tab.agent = agent;
     tab.agentPid = agentPid;
-    if (agentChanged && tabs.includes(tab)) sortTabs();
     const icon = element<HTMLTemplateElement>(agent ? 'agent-icon' : 'session-icon').content.cloneNode(true) as DocumentFragment;
     if (agent) icon.querySelector('svg')?.setAttribute('aria-label', `${agent} running`);
     button.querySelector('svg')?.replaceWith(icon);
@@ -243,8 +229,9 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   }, signal => needsAttention(tab, signal), report => updateAgentStatus(tab, { type: 'report', report, viewed: isViewed(tab) }),
   () => updateAgentStatus(tab, { type: 'reset' }));
   const tab: Tab = { button, label, wrapper, panel, view, cwd: initialCwd, shell: preferences.shell.split('/').pop() || preferences.shell,
-    attention: false, agentStatus: { unseenCompletion: false }, statusLabel, lastStatusNotification: 0 }; tabs.push(tab);
-  sortTabs();
+    attention: false, agentStatus: { unseenCompletion: false }, statusLabel, lastStatusNotification: 0, opener: source };
+  const index = insertAfterOpener(tabs, tab, source, item => item.opener);
+  tablist.insertBefore(wrapper, tablist.children[index] ?? null);
   view.terminal.onData(() => clearAttention(tab));
   button.onclick = () => select(tab);
   close.onclick = () => closeTab(tab);
