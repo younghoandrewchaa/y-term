@@ -22,3 +22,9 @@ export function tabShortcutDigit(index: number, count: number): number | undefin
   if (index < 8) return index + 1;
   return index === count - 1 ? 9 : undefined;
 }
+
+/** When a tab closes, its children take over its opener, as in Chrome, so the closed tab can be freed. */
+export function detachOpener<T extends { opener?: T }>(items: T[], closed: T): void {
+  for (const item of items) if (item.opener === closed) item.opener = closed.opener;
+  closed.opener = undefined;
+}

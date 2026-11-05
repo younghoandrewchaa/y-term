@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { insertAfterOpener, shortcutTabIndex, tabShortcutDigit } from '../src/shared/tab-order.ts';
+import { detachOpener, insertAfterOpener, shortcutTabIndex, tabShortcutDigit } from '../src/shared/tab-order.ts';
 
 interface Node { id: string; opener?: Node }
 const node = (id: string, opener?: Node): Node => ({ id, opener });
@@ -61,4 +61,14 @@ test('the first eight tabs and the last tab show their shortcut digit', () => {
     const digit = tabShortcutDigit(index, count);
     if (digit !== undefined) assert.equal(shortcutTabIndex(digit, count), index);
   }
+});
+
+test('closing a tab hands its children to its own opener, as Chrome does', () => {
+  const x = node('x'); const a = node('a', x); const a1 = node('a1', a); const y = node('y');
+  const items = [x, a1, y]; // a has just been closed
+  detachOpener(items, a);
+  assert.equal(a1.opener, x);
+  assert.equal(a.opener, undefined, 'the closed tab lets go of its own opener');
+  insertAfterOpener(items, node('new', x), x, openerOf);
+  assert.deepEqual(ids(items), ['x', 'a1', 'new', 'y']);
 });

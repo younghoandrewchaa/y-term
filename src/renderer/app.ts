@@ -8,7 +8,7 @@ import type { MenuAction, Preferences, RestoredTab } from '../shared/terminal-pr
 import type { UpdateState } from '../shared/update-protocol.ts';
 import { agentStatusLabel, reduceAgentStatus } from '../shared/agent-status.ts';
 import type { AgentStatusEvent, AgentStatusState } from '../shared/agent-status.ts';
-import { insertAfterOpener, shortcutTabIndex, tabShortcutDigit } from '../shared/tab-order.ts';
+import { detachOpener, insertAfterOpener, shortcutTabIndex, tabShortcutDigit } from '../shared/tab-order.ts';
 
 // A file dropped outside a terminal must not navigate away from the app.
 for (const type of ['dragover', 'drop'] as const) {
@@ -283,6 +283,7 @@ function closeTab(tab = active): void {
   if (!tab) return;
   const index = tabs.indexOf(tab); if (index === -1) return;
   tabs.splice(index, 1); tab.wrapper.remove(); tab.panel.remove();
+  detachOpener(tabs, tab);
   renumberTabs();
   publishAttention();
   void tab.view.close().catch(report);
