@@ -5,6 +5,10 @@ import type { ElectronApplication, Page } from 'playwright';
 
 /** Exercise the redesign through the real renderer, settings, and shells. */
 export async function verifyVisualDesign(application: ElectronApplication, page: Page): Promise<void> {
+  const openSettings = async () => {
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('terminal:action', 'settings'));
+    await page.locator('#settings[open]').waitFor();
+  };
   const screenshotDirectory = process.env.Y_TERM_SCREENSHOTS;
   if (screenshotDirectory) await mkdir(screenshotDirectory, { recursive: true });
   const screenshot = async (name: string) => {
@@ -34,8 +38,9 @@ export async function verifyVisualDesign(application: ElectronApplication, page:
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => (window as unknown as { smokeOutput: string }).smokeOutput.includes('\x1b]2;Y-Term visual check\x07'));
   await screenshot('dark');
+  assert.equal(await page.locator('#settings-open').count(), 0, 'the sidebar has no Settings row');
 
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettings();
   await screenshot('settings-dark');
   await page.locator('select[name=theme]').selectOption('light');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -43,7 +48,7 @@ export async function verifyVisualDesign(application: ElectronApplication, page:
   assert.equal(await page.locator('.sidebar').evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(240, 239, 236)');
   assert.equal(await page.locator('.xterm-viewport').last().evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(250, 249, 246)');
   await screenshot('light');
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettings();
   await page.locator('select[name=theme]').selectOption('dark');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark' && !document.querySelector('dialog[open]'));
@@ -90,8 +95,8 @@ export async function verifyVisualDesign(application: ElectronApplication, page:
     await ready();
   }
   assert.equal(await page.locator('#tabs').evaluate(node => node.scrollHeight > node.clientHeight), true);
-  const settings = await page.locator('#settings-open').boundingBox();
-  assert.ok(settings && settings.y + settings.height <= 400);
+  const version = await page.locator('#app-version').boundingBox();
+  assert.ok(version && version.y + version.height <= 400);
   await page.locator('[role=tab]').last().focus();
   await page.keyboard.press('Home');
   assert.equal(await page.locator('[role=tab]').first().getAttribute('aria-selected'), 'true');

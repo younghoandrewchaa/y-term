@@ -11,6 +11,10 @@ interface DropState {
 
 /** Exercise the real context bridge and PTY channel, without mocking path lookup. */
 export async function verifyFileDrops(application: ElectronApplication, page: Page, directory: string): Promise<void> {
+  const openSettings = async () => {
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('terminal:action', 'settings'));
+    await page.locator('#settings[open]').waitFor();
+  };
   const paths = [join(directory, 'hello world.txt'), join(directory, "it's 한글 $();`&*.txt")];
   const folder = join(directory, 'a folder');
   await mkdir(folder);
@@ -67,7 +71,7 @@ export async function verifyFileDrops(application: ElectronApplication, page: Pa
 
     // Hidden tabs, dialogs, and outside surfaces cannot consume a file drop.
     assert.deepEqual(await drop('[role=tabpanel][hidden] .xterm-screen'), { overPrevented: true, dropPrevented: true });
-    await page.locator('#settings-open').click();
+    await openSettings();
     await drop(activeScreen);
     await drop('#settings');
     await page.locator('#settings-cancel').click();

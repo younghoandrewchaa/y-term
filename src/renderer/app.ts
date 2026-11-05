@@ -351,7 +351,6 @@ function action(command: MenuAction): void {
 }
 element('new-tab').onclick = () => { void newTab().catch(report); };
 element('empty-new-tab').onclick = () => { void newTab().catch(report); };
-element('settings-open').onclick = openSettings;
 element('settings-cancel').onclick = () => settings.close();
 settings.addEventListener('close', () => { active?.view.focus(); if (active) clearAttention(active); });
 settingsForm.onsubmit = event => {
