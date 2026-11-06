@@ -8,7 +8,7 @@ import type { MenuAction, Preferences, RestoredTab } from '../shared/terminal-pr
 import type { UpdateState } from '../shared/update-protocol.ts';
 import { agentStatusLabel, reduceAgentStatus } from '../shared/agent-status.ts';
 import type { AgentStatusEvent, AgentStatusState } from '../shared/agent-status.ts';
-import { detachOpener, insertAfterOpener, shortcutTabIndex, tabShortcutDigit } from '../shared/tab-order.ts';
+import { detachOpener, insertAfterOpener, moveTab, shortcutTabIndex, tabShortcutDigit } from '../shared/tab-order.ts';
 
 // A file dropped outside a terminal must not navigate away from the app.
 for (const type of ['dragover', 'drop'] as const) {
@@ -262,6 +262,7 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   view.terminal.onData(() => clearAttention(tab));
   button.onclick = () => select(tab);
   close.onclick = () => closeTab(tab);
+  attachTabDrag(tab);
   button.onkeydown = event => {
     if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(event.key)) {
       event.preventDefault(); cycle(event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1); active?.button.focus();
@@ -278,6 +279,57 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   }
   catch (error) { if (tabs.includes(tab)) { statusText.textContent = String(error); status.hidden = false; } }
   return tab;
+}
+// Drag a tab up or down the sidebar. The custom type keeps file-drop handlers and xterm from treating it as a paste.
+const TAB_DRAG_TYPE = 'application/x-y-term-tab';
+let dragged: Tab | undefined;
+function clearDropMarks(): void { for (const item of tabs) delete item.wrapper.dataset.drop; }
+/** The slot under the pointer: before the first tab whose middle is below it. The list, not each tab, owns this, so the gaps between tabs work too. */
+function dropSlot(clientY: number): number {
+  const index = tabs.findIndex(item => { const box = item.wrapper.getBoundingClientRect(); return clientY < box.top + box.height / 2; });
+  return index === -1 ? tabs.length : index;
+}
+function isTabDrag(event: DragEvent): boolean { return !!dragged && !!event.dataTransfer?.types.includes(TAB_DRAG_TYPE); }
+tablist.addEventListener('dragover', event => {
+  if (!dragged || !isTabDrag(event)) return;
+  event.preventDefault();
+  event.dataTransfer!.dropEffect = 'move';
+  const slot = dropSlot(event.clientY);
+  const from = tabs.indexOf(dragged);
+  clearDropMarks();
+  // Dropping next to itself would not move the tab, so no line.
+  if (slot === from || slot === from + 1) return;
+  if (slot < tabs.length) tabs[slot].wrapper.dataset.drop = 'before';
+  else tabs[tabs.length - 1].wrapper.dataset.drop = 'after';
+});
+tablist.addEventListener('dragleave', event => {
+  if (!(event.relatedTarget instanceof Node && tablist.contains(event.relatedTarget))) clearDropMarks();
+});
+tablist.addEventListener('drop', event => {
+  if (!dragged || !isTabDrag(event)) return;
+  event.preventDefault();
+  const moving = dragged;
+  clearDropMarks();
+  if (!moveTab(tabs, tabs.indexOf(moving), dropSlot(event.clientY))) return;
+  tablist.insertBefore(moving.wrapper, tabs[tabs.indexOf(moving) + 1]?.wrapper ?? null);
+  renumberTabs();
+  publishLayout();
+});
+function attachTabDrag(tab: Tab): void {
+  const { wrapper } = tab;
+  wrapper.draggable = true;
+  wrapper.addEventListener('dragstart', event => {
+    if (!event.dataTransfer) return;
+    dragged = tab;
+    event.dataTransfer.setData(TAB_DRAG_TYPE, tab.button.id);
+    event.dataTransfer.effectAllowed = 'move';
+    wrapper.dataset.dragging = 'true';
+  });
+  wrapper.addEventListener('dragend', () => {
+    dragged = undefined;
+    delete wrapper.dataset.dragging;
+    clearDropMarks();
+  });
 }
 function closeTab(tab = active): void {
   if (!tab) return;

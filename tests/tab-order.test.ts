@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { detachOpener, insertAfterOpener, shortcutTabIndex, tabShortcutDigit } from '../src/shared/tab-order.ts';
+import { detachOpener, insertAfterOpener, moveTab, shortcutTabIndex, tabShortcutDigit } from '../src/shared/tab-order.ts';
 
 interface Node { id: string; opener?: Node }
 const node = (id: string, opener?: Node): Node => ({ id, opener });
@@ -71,4 +71,36 @@ test('closing a tab hands its children to its own opener, as Chrome does', () =>
   assert.equal(a.opener, undefined, 'the closed tab lets go of its own opener');
   insertAfterOpener(items, node('new', x), x, openerOf);
   assert.deepEqual(ids(items), ['x', 'a1', 'new', 'y']);
+});
+
+test('dragging a tab down lands it in the slot the drop line showed', () => {
+  const items = ['a', 'b', 'c', 'd'].map(id => node(id));
+  assert.equal(moveTab(items, 0, 3), true); // drop line between c and d
+  assert.deepEqual(ids(items), ['b', 'c', 'a', 'd']);
+});
+
+test('dragging a tab up lands it in the slot the drop line showed', () => {
+  const items = ['a', 'b', 'c', 'd'].map(id => node(id));
+  assert.equal(moveTab(items, 3, 1), true); // drop line between a and b
+  assert.deepEqual(ids(items), ['a', 'd', 'b', 'c']);
+  assert.equal(moveTab(items, 0, 4), true); // after the last tab
+  assert.deepEqual(ids(items), ['d', 'b', 'c', 'a']);
+});
+
+test('dropping a tab beside itself changes nothing', () => {
+  const a = node('a'); const b = node('b', a); const items = [a, b, node('c')];
+  assert.equal(moveTab(items, 1, 1), false);
+  assert.equal(moveTab(items, 1, 2), false);
+  assert.equal(moveTab(items, 5, 0), false);
+  assert.equal(moveTab(items, 0, 9), false);
+  assert.deepEqual(ids(items), ['a', 'b', 'c']);
+  assert.equal(b.opener, a, 'a no-op keeps the opener');
+});
+
+test('a moved tab forgets its opener so new tabs no longer group with it', () => {
+  const a = node('a'); const b = node('b', a); const items = [a, b, node('x')];
+  moveTab(items, 1, 3);
+  assert.equal(b.opener, undefined);
+  insertAfterOpener(items, node('n', a), a, openerOf);
+  assert.deepEqual(ids(items), ['a', 'n', 'x', 'b']);
 });

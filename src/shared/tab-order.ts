@@ -28,3 +28,12 @@ export function detachOpener<T extends { opener?: T }>(items: T[], closed: T): v
   for (const item of items) if (item.opener === closed) item.opener = closed.opener;
   closed.opener = undefined;
 }
+
+/** Drag a tab to slot `to` (0…length, counted before it is removed). A moved tab forgets its opener, as in Chrome. */
+export function moveTab<T extends { opener?: T }>(items: T[], from: number, to: number): boolean {
+  if (from < 0 || from >= items.length || to < 0 || to > items.length || to === from || to === from + 1) return false;
+  const [item] = items.splice(from, 1);
+  items.splice(to > from ? to - 1 : to, 0, item);
+  item.opener = undefined;
+  return true;
+}

@@ -10,6 +10,7 @@ import { verifyVisualDesign } from './visual-smoke.ts';
 import { verifySidebarResize } from './sidebar-smoke.ts';
 import { verifySessionDirectories } from './directory-smoke.ts';
 import { verifyTabShortcuts } from './tab-shortcut-smoke.ts';
+import { verifyTabDrag } from './tab-drag-smoke.ts';
 import { verifyAttention } from './attention-smoke.ts';
 import { verifyAgentStatus } from './agent-status-smoke.ts';
 import { verifyBranchDelete } from './branch-smoke.ts';
@@ -130,6 +131,7 @@ try {
   await verifyBranchDelete(application, page);
   await verifySessionDirectories(page);
   await verifyTabShortcuts(application, page);
+  await verifyTabDrag(application, page);
   await verifyImagePaste(application, page);
   await verifyLinks(application, page);
   await verifyVisualDesign(application, page);
