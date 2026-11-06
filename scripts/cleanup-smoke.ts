@@ -9,8 +9,10 @@ const application = await electron.launch({ args: ['.'], env: { ...process.env, 
 try {
   const page = await application.firstWindow();
   await page.waitForFunction(() => document.querySelector('[role=tabpanel]')?.getAttribute('data-ready') === 'true');
-  await page.getByRole('button', { name: 'New tab', exact: true }).click();
-  await page.waitForFunction(() => document.querySelectorAll('[role=tabpanel][data-ready=true]').length === 2);
+  for (const count of [2, 3]) {
+    await page.getByRole('button', { name: 'New tab', exact: true }).click();
+    await page.waitForFunction(value => document.querySelectorAll('[role=tabpanel][data-ready=true]').length === value, count);
+  }
   await application.evaluate(({ dialog }) => {
     dialog.showMessageBoxSync = () => { throw new Error('Test cleanup must not open the multi-tab quit dialog'); };
   });

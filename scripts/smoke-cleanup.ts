@@ -1,7 +1,15 @@
 import type { ElectronApplication } from 'playwright';
 
-/** Close test-owned windows first so normal multi-tab quit protection cannot block teardown. */
+/** Close every tab, then the test-owned windows, so the multi-tab quit dialog never waits for a click. */
 export async function closeSmokeApplication(application: ElectronApplication): Promise<void> {
+  for (const page of application.windows()) {
+    await page.evaluate(async () => {
+      for (const button of document.querySelectorAll<HTMLButtonElement>('.tab-close')) button.click();
+      // Let the close requests go out, then wait for main to answer a later request.
+      await new Promise(resolve => setTimeout(resolve, 0));
+      await window.terminal.getPreferences();
+    }).catch(() => {}); // A window that is already closing has no tabs to close.
+  }
   if (application.windows().length) {
     await application.evaluate(({ BrowserWindow }) => {
       // Destroying a window runs the app's webContents-destroyed session cleanup.
