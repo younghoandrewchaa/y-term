@@ -8,7 +8,7 @@ import type { MenuAction, Preferences, RestoredTab } from '../shared/terminal-pr
 import type { UpdateState } from '../shared/update-protocol.ts';
 import { agentStatusLabel, reduceAgentStatus } from '../shared/agent-status.ts';
 import type { AgentStatusEvent, AgentStatusState } from '../shared/agent-status.ts';
-import { detachOpener, insertAfterOpener, shortcutTabIndex, tabShortcutDigit } from '../shared/tab-order.ts';
+import { detachOpener, insertAfterOpener, moveTab, shortcutTabIndex, tabShortcutDigit } from '../shared/tab-order.ts';
 
 // A file dropped outside a terminal must not navigate away from the app.
 for (const type of ['dragover', 'drop'] as const) {
@@ -262,6 +262,7 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   view.terminal.onData(() => clearAttention(tab));
   button.onclick = () => select(tab);
   close.onclick = () => closeTab(tab);
+  attachTabDrag(tab);
   button.onkeydown = event => {
     if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(event.key)) {
       event.preventDefault(); cycle(event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1); active?.button.focus();
@@ -278,6 +279,49 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   }
   catch (error) { if (tabs.includes(tab)) { statusText.textContent = String(error); status.hidden = false; } }
   return tab;
+}
+// Drag a tab up or down the sidebar. The custom type keeps file-drop handlers and xterm from treating it as a paste.
+const TAB_DRAG_TYPE = 'application/x-y-term-tab';
+let dragged: Tab | undefined;
+function clearDropMarks(): void { for (const item of tabs) delete item.wrapper.dataset.drop; }
+function attachTabDrag(tab: Tab): void {
+  const { wrapper } = tab;
+  wrapper.draggable = true;
+  wrapper.addEventListener('dragstart', event => {
+    if (!event.dataTransfer) return;
+    dragged = tab;
+    event.dataTransfer.setData(TAB_DRAG_TYPE, tab.button.id);
+    event.dataTransfer.effectAllowed = 'move';
+    wrapper.dataset.dragging = 'true';
+  });
+  wrapper.addEventListener('dragover', event => {
+    if (!dragged || !event.dataTransfer?.types.includes(TAB_DRAG_TYPE)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    const box = wrapper.getBoundingClientRect();
+    const side = event.clientY < box.top + box.height / 2 ? 'before' : 'after';
+    for (const item of tabs) if (item !== tab) delete item.wrapper.dataset.drop;
+    wrapper.dataset.drop = side;
+  });
+  wrapper.addEventListener('dragleave', event => {
+    if (!(event.relatedTarget instanceof Node && wrapper.contains(event.relatedTarget))) delete wrapper.dataset.drop;
+  });
+  wrapper.addEventListener('drop', event => {
+    if (!dragged || !event.dataTransfer?.types.includes(TAB_DRAG_TYPE)) return;
+    event.preventDefault();
+    const moving = dragged;
+    const to = tabs.indexOf(tab) + (wrapper.dataset.drop === 'after' ? 1 : 0);
+    clearDropMarks();
+    if (!moveTab(tabs, tabs.indexOf(moving), to)) return;
+    tablist.insertBefore(moving.wrapper, tabs[tabs.indexOf(moving) + 1]?.wrapper ?? null);
+    renumberTabs();
+    publishLayout();
+  });
+  wrapper.addEventListener('dragend', () => {
+    dragged = undefined;
+    delete wrapper.dataset.dragging;
+    clearDropMarks();
+  });
 }
 function closeTab(tab = active): void {
   if (!tab) return;
