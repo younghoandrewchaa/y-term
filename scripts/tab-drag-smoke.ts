@@ -33,6 +33,18 @@ export async function verifyTabDrag(application: ElectronApplication, page: Page
   assert.deepEqual(await tabIds(), [ids[0], ids[1], ids[2]], 'dragging up must move the tab above its target');
   await noDragMarks();
 
+  // The drop line sits in the 4px gap between tabs, so releasing there must work too.
+  const from = (await tab(2).boundingBox())!; const gapBelow = (await tab(1).boundingBox())!;
+  await page.mouse.move(from.x + 40, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(gapBelow.x + 40, gapBelow.y + gapBelow.height / 2, { steps: 5 });
+  await page.mouse.move(gapBelow.x + 40, gapBelow.y - 2, { steps: 3 });
+  await page.mouse.up();
+  assert.deepEqual(await tabIds(), [ids[0], ids[2], ids[1]], 'dropping in the gap between tabs must move the tab there');
+  await noDragMarks();
+  await tab(1).dragTo(tab(2), { targetPosition: { x: 40, y: 44 } });
+  assert.deepEqual(await tabIds(), ids);
+
   // A tab dropped on the terminal is not a move and must paste nothing.
   const rows = page.locator('[role=tabpanel]:not([hidden]) .xterm-rows');
   const text = await rows.textContent();
