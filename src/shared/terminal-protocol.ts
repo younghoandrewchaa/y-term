@@ -67,6 +67,8 @@ export interface TerminalAPI {
   copyBranch(name: string): Promise<void>;
   /** Asks for confirmation, then deletes the branch; resolves false if the user cancels. */
   deleteBranch(root: string, name: string): Promise<boolean>;
+  /** Asks before closing a tab whose agent is still working; resolves true to close. */
+  confirmCloseTab(agent?: string): Promise<boolean>;
   setAttentionCount(count: number): void;
   notifyAttention(tab: string, title: string, body: string): void;
   onAttentionActivate(listener: (tab: string) => void): () => void;

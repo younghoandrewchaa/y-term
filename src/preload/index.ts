@@ -42,6 +42,7 @@ const api: TerminalAPI = {
   listBranches: id => ipcRenderer.invoke('terminal:branches', id),
   copyBranch: name => ipcRenderer.invoke('terminal:copy-branch', name),
   deleteBranch: (root, name) => ipcRenderer.invoke('terminal:delete-branch', root, name),
+  confirmCloseTab: agent => ipcRenderer.invoke('terminal:confirm-close', agent),
   setAttentionCount: count => ipcRenderer.send('attention:count', count),
   notifyAttention: (tab, title, body) => ipcRenderer.send('attention:notify', tab, title, body),
   onAttentionActivate: listener => {

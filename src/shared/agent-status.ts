@@ -65,3 +65,8 @@ export function agentStatusLabel(state: AgentStatusState): 'Working' | 'Blocked'
   if (state.reported.state === 'blocked' || state.reported.state === 'error') return 'Blocked';
   return state.unseenCompletion ? 'Done' : 'Idle';
 }
+
+/** Closing a tab mid-task would kill the agent, so ask first. */
+export function closeNeedsConfirmation(state: AgentStatusState): boolean {
+  return agentStatusLabel(state) === 'Working';
+}

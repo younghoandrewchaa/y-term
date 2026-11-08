@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseAgentStatus, reduceAgentStatus, agentStatusLabel } from '../src/shared/agent-status.ts';
+import { parseAgentStatus, reduceAgentStatus, agentStatusLabel, closeNeedsConfirmation } from '../src/shared/agent-status.ts';
 import type { AgentReport, AgentStatusState } from '../src/shared/agent-status.ts';
 
 const initial: AgentStatusState = { unseenCompletion: false };
@@ -77,4 +77,10 @@ test('child reports do not replace root status, and clear/reset remove it', () =
   assert.deepEqual(report('clear', false, working, 'worker'), working);
   assert.equal(agentStatusLabel(report('clear', false, working)), undefined);
   assert.equal(agentStatusLabel(reduceAgentStatus(working, { type: 'reset' })), undefined);
+});
+
+test('only a working agent asks before its tab closes', () => {
+  assert.equal(closeNeedsConfirmation({ unseenCompletion: false }), false);
+  assert.equal(closeNeedsConfirmation(report('working')), true);
+  for (const word of ['idle', 'done', 'blocked', 'error'] as const) assert.equal(closeNeedsConfirmation(report(word)), false, word);
 });

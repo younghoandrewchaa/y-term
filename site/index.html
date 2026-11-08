@@ -38,7 +38,7 @@
           <div class="win-tab agent" data-status="done"><svg viewBox="0 0 24 24"><path d="M12 3c.6 4.6 2.4 6.4 7 7-4.6.6-6.4 2.4-7 7-.6-4.6-2.4-6.4-7-7 4.6-.6 6.4-2.4 7-7Z"/><path d="M19 16v4M17 18h4"/></svg><span class="win-tab-text">Claude Code<small>site<b>Done</b></small></span></div>
           <div class="win-tab agent" data-status="working"><svg viewBox="0 0 24 24"><path d="M12 3c.6 4.6 2.4 6.4 7 7-4.6.6-6.4 2.4-7 7-.6-4.6-2.4-6.4-7-7 4.6-.6 6.4-2.4 7-7Z"/><path d="M19 16v4M17 18h4"/></svg><span class="win-tab-text">Claude Code<small>y-term<b>Working</b></small></span></div>
           <div class="win-tab active"><svg viewBox="0 0 24 24"><path d="m5 7 5 5-5 5M13 17h6"/></svg><span class="win-tab-text">zsh<small>y-term</small></span></div>
-          <div class="win-version">Y-Term 0.1.16</div>
+          <div class="win-version">Y-Term 0.1.17</div>
         </aside>
         <div class="win-main">
           <div class="win-header"><span>zsh · Local</span><span class="muted">~/github/y-term</span></div>
@@ -79,7 +79,7 @@
         </article>
         <article>
           <h3>Agent status at a glance</h3>
-          <p>Agents that report <a href="https://www.superlogical.com/rex/docs/build/program-status">OSC 7501 status</a> show <strong>Working</strong>, <strong>Blocked</strong>, <strong>Done</strong>, or <strong>Idle</strong> beside their tab. Blocked and Done tabs add to the Dock badge, so you know which agent needs you.</p>
+          <p>Agents that report <a href="https://www.superlogical.com/rex/docs/build/program-status">OSC 7501 status</a> show <strong>Working</strong>, <strong>Blocked</strong>, <strong>Done</strong>, or <strong>Idle</strong> beside their tab. Blocked and Done tabs add to the Dock badge, so you know which agent needs you, and closing a Working tab asks first so a stray ⌘W never stops an agent mid-task.</p>
         </article>
         <article>
           <h3>Friendly to coding agents</h3>
@@ -113,7 +113,7 @@
       <table>
         <tbody>
           <tr><td><kbd>⌘T</kbd></td><td>New tab in the current directory</td></tr>
-          <tr><td><kbd>⌘W</kbd></td><td>Close tab and end its shell</td></tr>
+          <tr><td><kbd>⌘W</kbd></td><td>Close tab and end its shell (asks first while an agent is working)</td></tr>
           <tr><td><kbd>⌃Tab</kbd> / <kbd>⇧⌘]</kbd></td><td>Next tab</td></tr>
           <tr><td><kbd>⌃⇧Tab</kbd> / <kbd>⇧⌘[</kbd></td><td>Previous tab</td></tr>
           <tr><td><kbd>⌘1</kbd>–<kbd>⌘9</kbd></td><td>Go to a tab by position (⌘9 is the last tab). Hold <kbd>⌘</kbd> to see the numbers</td></tr>

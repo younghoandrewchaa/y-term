@@ -2,6 +2,10 @@ import type { ElectronApplication } from 'playwright';
 
 /** Close every tab, then the test-owned windows, so the multi-tab quit dialog never waits for a click. */
 export async function closeSmokeApplication(application: ElectronApplication): Promise<void> {
+  // Tabs whose agent is still working ask before closing; accept so cleanup never waits.
+  await application.evaluate(({ dialog }) => {
+    dialog.showMessageBox = (async () => ({ response: 1, checkboxChecked: false })) as typeof dialog.showMessageBox;
+  }).catch(() => {});
   for (const page of application.windows()) {
     await page.evaluate(async () => {
       for (const button of document.querySelectorAll<HTMLButtonElement>('.tab-close')) button.click();

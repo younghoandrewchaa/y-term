@@ -165,13 +165,29 @@ print('YTERM_7501_QUERY_OK')`;
     await emit(id, 'state=working'); await state(agent, 'working');
     await command(id, "printf '\\033c'"); await state(agent, null);
     await emit(id, 'state=working'); await state(agent, 'working');
+    // Closing a working tab asks first; Cancel keeps it open.
+    await application.evaluate(({ dialog }) => {
+      const smoke = (globalThis as any).agentStatusSmoke;
+      smoke.closePrompts = [] as string[];
+      smoke.showMessageBox = dialog.showMessageBox;
+      dialog.showMessageBox = (async (_window: unknown, options: { message: string }) => {
+        smoke.closePrompts.push(options.message); return { response: 0, checkboxChecked: false };
+      }) as typeof dialog.showMessageBox;
+    });
+    await agent.hover(); await agent.getByRole('button', { name: 'Close tab' }).click();
+    await page.evaluate(() => window.terminal.getPreferences());
+    assert.deepEqual(await application.evaluate(() => (globalThis as any).agentStatusSmoke.closePrompts), ['Close this tab while the agent is working?']);
+    assert.equal(await agent.count(), 1);
     await command(id, 'exit'); await state(agent, null);
     await agent.hover(); await agent.getByRole('button', { name: 'Close tab' }).click();
+    await agent.waitFor({ state: 'detached' });
+    assert.equal(await application.evaluate(() => (globalThis as any).agentStatusSmoke.closePrompts.length), 1);
   } finally {
-    await application.evaluate(({ ipcMain, BrowserWindow, Notification }) => {
+    await application.evaluate(({ ipcMain, BrowserWindow, Notification, dialog }) => {
       const state = (globalThis as any).agentStatusSmoke;
       Notification.prototype.show = state.show;
       Notification.isSupported = state.supported;
+      if (state.showMessageBox) dialog.showMessageBox = state.showMessageBox;
       for (const notification of state.shown) notification.emit('close');
       ipcMain.removeListener('session:layout', state.listener);
       ipcMain.removeListener('attention:notify', state.notified);

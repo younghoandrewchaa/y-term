@@ -6,7 +6,7 @@ import type { AttentionSignal } from '../shared/attention.ts';
 import { AGENT_LABELS, resumeCommand } from '../shared/agent-resume.ts';
 import type { MenuAction, Preferences, RestoredTab } from '../shared/terminal-protocol.ts';
 import type { UpdateState } from '../shared/update-protocol.ts';
-import { agentStatusLabel, reduceAgentStatus } from '../shared/agent-status.ts';
+import { agentStatusLabel, closeNeedsConfirmation, reduceAgentStatus } from '../shared/agent-status.ts';
 import type { AgentStatusEvent, AgentStatusState } from '../shared/agent-status.ts';
 import { detachOpener, insertAfterOpener, moveTab, shortcutTabIndex, tabShortcutDigit } from '../shared/tab-order.ts';
 
@@ -261,7 +261,7 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   renumberTabs();
   view.terminal.onData(() => clearAttention(tab));
   button.onclick = () => select(tab);
-  close.onclick = () => closeTab(tab);
+  close.onclick = () => void requestCloseTab(tab).catch(report);
   attachTabDrag(tab);
   button.onkeydown = event => {
     if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(event.key)) {
@@ -331,6 +331,18 @@ function attachTabDrag(tab: Tab): void {
     clearDropMarks();
   });
 }
+let confirmingClose = false;
+/** Asks first when the tab's agent is working, so a stray ⌘W doesn't kill it. */
+async function requestCloseTab(tab = active): Promise<void> {
+  if (!tab || confirmingClose) return;
+  if (closeNeedsConfirmation(tab.agentStatus)) {
+    confirmingClose = true;
+    try {
+      if (!await window.terminal.confirmCloseTab(tab.agent)) { if (tabs.includes(tab)) tab.view.focus(); return; }
+    } finally { confirmingClose = false; }
+  }
+  closeTab(tab);
+}
 function closeTab(tab = active): void {
   if (!tab) return;
   const index = tabs.indexOf(tab); if (index === -1) return;
@@ -385,7 +397,7 @@ function action(command: MenuAction): void {
   if (document.querySelector('dialog[open]')) return;
   if (command === 'new-tab') void newTab().catch(report);
   else if (command === 'toggle-sidebar') toggleSidebar();
-  else if (command === 'close-tab') closeTab();
+  else if (command === 'close-tab') void requestCloseTab().catch(report);
   else if (command === 'settings') openSettings();
   else if (command === 'next-tab') cycle(1);
   else if (command === 'previous-tab') cycle(-1);

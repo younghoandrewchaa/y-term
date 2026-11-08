@@ -91,6 +91,16 @@ export function registerTerminalIpc(manager: SessionManager, preferences: Prefer
     if (!await confirm(`Branch ${name} is not fully merged.`, 'Commits that are only on this branch will be lost. Delete it anyway with git branch -D?', 'Force Delete')) return false;
     return await git.deleteBranch(ownerId, root, name, true) === 'deleted';
   });
+  ipcMain.handle('terminal:confirm-close', async (event, agent) => {
+    owner(event);
+    const name = typeof agent === 'string' && /^[A-Za-z0-9_.+-]{1,32}$/.test(agent) ? agent : 'The agent';
+    const window = BrowserWindow.fromWebContents(event.sender)!;
+    return (await dialog.showMessageBox(window, {
+      type: 'warning', buttons: ['Cancel', 'Close Tab'], defaultId: 0, cancelId: 0,
+      message: 'Close this tab while the agent is working?',
+      detail: `${name} is still working in this tab. Closing it ends the shell and stops the agent.`,
+    })).response === 1;
+  });
   const listen = (channel: string, handler: (event: IpcMainEvent, ...args: any[]) => void) => {
     ipcMain.on(channel, (event, ...args) => {
       try { owner(event); handler(event, ...args); }
