@@ -8,6 +8,7 @@ import type { MenuAction, Preferences, RestoredTab } from '../shared/terminal-pr
 import type { UpdateState } from '../shared/update-protocol.ts';
 import { agentStatusLabel, closeNeedsConfirmation, reduceAgentStatus } from '../shared/agent-status.ts';
 import type { AgentStatusEvent, AgentStatusState } from '../shared/agent-status.ts';
+import { inboxPosition, inboxQueue, inboxStep } from '../shared/inbox.ts';
 import { detachOpener, insertAfterOpener, moveTab, shortcutTabIndex, tabShortcutDigit } from '../shared/tab-order.ts';
 
 // A file dropped outside a terminal must not navigate away from the app.
@@ -27,11 +28,14 @@ const settings = element<HTMLDialogElement>('settings');
 const settingsForm = element<HTMLFormElement>('settings-form');
 const findBar = element('find-bar');
 const findInput = element<HTMLInputElement>('find-input');
-interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string; agent?: string; agentPid?: number; attention: boolean; agentStatus: AgentStatusState; statusLabel: HTMLElement; lastStatusNotification: number; opener?: Tab; number: HTMLElement }
+interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string; agent?: string; agentPid?: number; attention: boolean; agentStatus: AgentStatusState; statusLabel: HTMLElement; lastStatusNotification: number; opener?: Tab; number: HTMLElement; blockedAt?: number }
 const tabs: Tab[] = [];
 let active: Tab | undefined;
 let preferences: Preferences;
 let counter = 0;
+// The Inbox shows `active` without selecting its tab; `blockedAt` orders the queue.
+let inboxOpen = false;
+let blockedSequence = 0;
 let windowActive = false;
 let activityReceived = false;
 window.terminal.onWindowActivity(value => {
@@ -134,11 +138,45 @@ window.addEventListener('keydown', event => {
 window.addEventListener('keyup', event => { if (event.key === 'Meta') showTabNumbers(false); }, true);
 window.addEventListener('blur', () => showTabNumbers(false));
 function updateHeader(): void {
-  element('active-title').textContent = active?.label.textContent || 'Y-Term';
+  const title = active?.label.textContent || 'Y-Term';
+  const position = inboxOpen ? inboxPosition(queue(), active) : undefined;
+  element('active-title').textContent = !inboxOpen ? title : position ? `Inbox · ${position.position} of ${position.count} · ${title}` : 'Inbox';
   element('active-directory').textContent = active?.cwd || '';
   element('active-shell').textContent = active ? `${active.agent ?? active.shell} · Local` : 'Local';
   element('session-count').textContent = String(tabs.length);
   element('empty-state').hidden = tabs.length > 0;
+}
+function queue(): Tab[] { return inboxQueue(tabs, tab => tab.blockedAt); }
+function renderInbox(): void {
+  const waiting = queue();
+  const count = element('inbox-count');
+  count.textContent = String(waiting.length);
+  count.hidden = !waiting.length;
+  const inbox = element('inbox');
+  if (inboxOpen) inbox.setAttribute('aria-current', 'true');
+  else inbox.removeAttribute('aria-current');
+  inbox.setAttribute('aria-label', waiting.length ? `Inbox, ${waiting.length} waiting` : 'Inbox');
+  for (const tab of tabs) {
+    if (inboxOpen && tab === active) tab.wrapper.dataset.inInbox = 'true';
+    else delete tab.wrapper.dataset.inInbox;
+  }
+  element('inbox-nav').hidden = !inboxOpen;
+  for (const id of ['inbox-previous', 'inbox-next']) element<HTMLButtonElement>(id).disabled = !waiting.length;
+  element<HTMLButtonElement>('inbox-go').disabled = !active;
+  const bar = element('inbox-bar');
+  // The shown agent went back to work: stay on it, so typing never lands in another agent.
+  bar.hidden = !(inboxOpen && active && !inboxPosition(waiting, active));
+  if (!bar.hidden) bar.textContent = waiting.length ? `Back to work · Next ⌘J · ${waiting.length} waiting` : 'Back to work · No other agents waiting';
+  element('inbox-empty').hidden = !(inboxOpen && !active);
+  updateHeader();
+  // Nothing on screen to interrupt, so a new arrival shows at once.
+  if (inboxOpen && !active && waiting.length) openInbox(waiting[0]);
+}
+/** Opens the Inbox on `tab`, else on the current tab if it is waiting, else on the oldest waiting agent. */
+function openInbox(tab?: Tab): void {
+  inboxOpen = true;
+  show(tab ?? (active?.blockedAt !== undefined ? active : queue()[0]));
+  if (!active) element('inbox').focus();
 }
 function isViewed(tab: Tab): boolean {
   return active === tab && windowActive && document.visibilityState === 'visible' && !document.querySelector('dialog[open]');
@@ -167,6 +205,10 @@ function updateAgentStatus(tab: Tab, event: AgentStatusEvent): void {
   tab.agentStatus = reduceAgentStatus(tab.agentStatus, event);
   const label = agentStatusLabel(tab.agentStatus);
   renderTabStatus(tab);
+  if (label !== before) {
+    tab.blockedAt = label === 'Blocked' ? ++blockedSequence : undefined;
+    renderInbox();
+  }
   if (label !== before && (label === 'Blocked' || label === 'Done') && !isViewed(tab)) {
     // A program can report at output speed; keep desktop notifications bounded.
     const now = Date.now();
@@ -193,16 +235,22 @@ function clearAttention(tab: Tab): void {
   renderTabStatus(tab);
 }
 function select(tab: Tab): void {
+  inboxOpen = false;
+  show(tab);
+}
+/** Shows a tab's panel. In the Inbox no tab is selected: the Inbox row is. */
+function show(tab: Tab | undefined): void {
   active = tab;
-  clearAttention(tab);
+  if (tab) clearAttention(tab);
   for (const item of tabs) {
-    const selected = item === tab;
+    const selected = !inboxOpen && item === tab;
     item.button.setAttribute('aria-selected', String(selected));
-    item.button.tabIndex = selected ? 0 : -1;
-    item.panel.hidden = !selected;
+    item.button.tabIndex = selected || (inboxOpen && item === tabs[0]) ? 0 : -1;
+    item.panel.hidden = item !== tab;
   }
-  updateHeader();
+  renderInbox();
   publishLayout();
+  if (!tab) return;
   tab.button.scrollIntoView({ block: 'nearest' });
   tab.view.focus();
 }
@@ -355,17 +403,20 @@ function closeTab(tab = active): void {
   if (active === tab) {
     active = undefined;
     const next = tabs[Math.min(index, tabs.length - 1)];
-    if (next) select(next);
+    if (inboxOpen && next) openInbox(queue()[0]);
+    else if (next) select(next);
     else {
+      inboxOpen = false;
       report('No open shells. Press ⌘T to start a new session.');
       element('empty-state').hidden = false;
       element('empty-new-tab').focus();
     }
   }
-  updateHeader();
+  renderInbox();
 }
 function cycle(direction: number): void {
-  if (active && tabs.length) select(tabs[(tabs.indexOf(active) + direction + tabs.length) % tabs.length]);
+  if (!active && tabs.length) select(tabs[0]);
+  else if (active && tabs.length) select(tabs[(tabs.indexOf(active) + direction + tabs.length) % tabs.length]);
 }
 function applyPreferences(): void {
   document.documentElement.dataset.theme = preferences.theme;
@@ -397,7 +448,9 @@ function action(command: MenuAction): void {
   if (document.querySelector('dialog[open]')) return;
   if (command === 'new-tab') void newTab().catch(report);
   else if (command === 'toggle-sidebar') toggleSidebar();
-  else if (command === 'close-tab') void requestCloseTab().catch(report);
+  // Closing from the Inbox would end whichever agent happens to be shown.
+  else if (command === 'close-tab') { if (!inboxOpen) void requestCloseTab().catch(report); }
+  else if (command === 'inbox') openInbox(inboxOpen ? inboxStep(queue(), active, 1) : undefined);
   else if (command === 'settings') openSettings();
   else if (command === 'next-tab') cycle(1);
   else if (command === 'previous-tab') cycle(-1);
@@ -437,8 +490,14 @@ element('find-close').onclick = () => { findBar.hidden = true; active?.view.focu
 window.terminal.onAction(action);
 window.terminal.onAttentionActivate(id => {
   const tab = tabs.find(item => item.button.id === id);
-  if (tab && !document.querySelector('dialog[open]')) select(tab);
+  if (!tab || document.querySelector('dialog[open]')) return;
+  if (tab.blockedAt !== undefined) openInbox(tab);
+  else select(tab);
 });
+element('inbox').onclick = () => openInbox();
+element('inbox-previous').onclick = () => openInbox(inboxStep(queue(), active, -1));
+element('inbox-next').onclick = () => openInbox(inboxStep(queue(), active, 1));
+element('inbox-go').onclick = () => { if (active) select(active); };
 window.addEventListener('focus', () => { if (active) clearAttention(active); });
 document.addEventListener('visibilitychange', () => { if (active && isViewed(active)) clearAttention(active); });
 window.addEventListener('beforeunload', () => {

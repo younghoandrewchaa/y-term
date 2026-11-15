@@ -13,6 +13,7 @@ import { verifyTabShortcuts } from './tab-shortcut-smoke.ts';
 import { verifyTabDrag } from './tab-drag-smoke.ts';
 import { verifyAttention } from './attention-smoke.ts';
 import { verifyAgentStatus } from './agent-status-smoke.ts';
+import { verifyInbox } from './inbox-smoke.ts';
 import { verifyBranchDelete } from './branch-smoke.ts';
 import { closeSmokeApplication } from './smoke-cleanup.ts';
 
@@ -137,6 +138,7 @@ try {
   await verifyVisualDesign(application, page);
   await verifySidebarResize(application, page);
   await verifyAttention(application, page);
+  await verifyInbox(application, page);
   await verifyAgentStatus(application, page);
   assert.deepEqual(errors, []);
   console.log('PASS: shell commands, keyboard input, native image/text paste, file/folder drops, resize, independent tabs, closure, URL policy, sidebar layout, themes, search, empty state, and attention indicators.');

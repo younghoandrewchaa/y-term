@@ -13,6 +13,10 @@
     <div id="sidebar-resize" role="separator" tabindex="0" aria-label="Resize sidebar" aria-orientation="vertical" aria-controls="sidebar" title="Drag to resize · Double-click to reset"></div>
     <div class="window-drag-region" aria-hidden="true"></div>
     <div class="sidebar-heading"><h1>Sessions</h1><span id="session-count">0</span></div>
+    <button id="inbox" title="Agents waiting for you (⌘J)" aria-keyshortcuts="Meta+J">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M6 5h12l2 8v6H4v-6Z"/></svg>
+      <span class="inbox-label">Inbox</span><span id="inbox-count" hidden></span>
+    </button>
     <div id="tabs" role="tablist" aria-label="Terminal tabs" aria-orientation="vertical"></div>
     <button id="new-tab" class="sidebar-action" aria-label="New tab" title="New session (⌘T)">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -35,8 +39,14 @@
   <header class="session-header">
     <span id="active-title">Y-Term</span>
     <span id="active-directory" title="Starting directory"></span>
+    <span id="inbox-nav" hidden>
+      <button id="inbox-previous" aria-label="Previous waiting agent" title="Previous waiting agent">‹</button>
+      <button id="inbox-next" aria-label="Next waiting agent" title="Next waiting agent (⌘J)">›</button>
+      <button id="inbox-go">Go to tab</button>
+    </span>
     <span class="session-connection"><span class="connection-dot" aria-hidden="true"></span><span id="active-shell">Local</span></span>
   </header>
+  <div id="inbox-bar" role="status" hidden></div>
   <aside id="find-bar" hidden>
     <input id="find-input" type="search" placeholder="Find in terminal" aria-label="Find in terminal">
     <button id="find-previous" aria-label="Previous match">↑</button>
@@ -46,6 +56,10 @@
   </aside>
   <div id="workspace-content">
   <main id="panels">
+    <section id="inbox-empty" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M6 5h12l2 8v6H4v-6Z"/></svg>
+      <h2>No agents waiting</h2>
+    </section>
     <section id="empty-state" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 7 5 5-5 5M13 17h6"/></svg>
       <h2>A fresh start.</h2>
