@@ -315,7 +315,7 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   attachTabDrag(tab);
   button.onkeydown = event => {
     if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(event.key)) {
-      event.preventDefault(); cycle(event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1); active?.button.focus();
+      event.preventDefault(); cycle(event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1, tab); active?.button.focus();
     } else if (event.key === 'Home' || event.key === 'End') {
       event.preventDefault(); select(tabs[event.key === 'Home' ? 0 : tabs.length - 1]); active?.button.focus();
     }
@@ -416,9 +416,9 @@ function closeTab(tab = active): void {
   }
   renderInbox();
 }
-function cycle(direction: number): void {
-  if (!active && tabs.length) select(tabs[0]);
-  else if (active && tabs.length) select(tabs[(tabs.indexOf(active) + direction + tabs.length) % tabs.length]);
+function cycle(direction: number, from = active): void {
+  if (!from && tabs.length) select(tabs[0]);
+  else if (from && tabs.length) select(tabs[(tabs.indexOf(from) + direction + tabs.length) % tabs.length]);
 }
 function applyPreferences(): void {
   document.documentElement.dataset.theme = preferences.theme;

@@ -64,6 +64,19 @@ export async function verifyInbox(application: ElectronApplication, page: Page):
     // 3. Tabs stay where they are.
     assert.deepEqual(await tabIds(), order);
 
+    // Sidebar arrows move from the focused row, not the agent shown in the Inbox.
+    assert.notEqual(order[0], a.tabId);
+    for (const [key, expected] of [['ArrowDown', order[1]], ['ArrowRight', order[1]],
+      ['ArrowUp', order.at(-1)!], ['ArrowLeft', order.at(-1)!]]) {
+      await application.evaluate(({ BrowserWindow }, id) => BrowserWindow.getAllWindows()[0].webContents.send('attention:activate', id), a.tabId);
+      await page.locator(`#${order[0]}`).focus();
+      await page.keyboard.press(key);
+      assert.equal(await page.locator('[role=tab][aria-selected=true]').getAttribute('id'), expected,
+        `${key} must navigate from the focused sidebar tab`);
+      assert.equal(await page.evaluate(() => document.activeElement?.id), expected);
+    }
+    await application.evaluate(({ BrowserWindow }, id) => BrowserWindow.getAllWindows()[0].webContents.send('attention:activate', id), a.tabId);
+
     // 4. Resolving keeps the agent on screen, and typing still reaches it.
     await emit(a.sessionId, 'state=working'); await status(a.row, 'working');
     await page.waitForFunction(() => document.querySelector('#inbox-bar')?.textContent === 'Back to work · Next ⌘J · 1 waiting');
