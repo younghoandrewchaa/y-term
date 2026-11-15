@@ -157,6 +157,8 @@ function renderInbox(): void {
   else inbox.removeAttribute('aria-current');
   inbox.setAttribute('aria-label', waiting.length ? `Inbox, ${waiting.length} waiting` : 'Inbox');
   for (const tab of tabs) {
+    // One tab stays reachable with Tab: the selected one, or the first while the Inbox is open.
+    tab.button.tabIndex = (inboxOpen ? tab === tabs[0] : tab === active) ? 0 : -1;
     if (inboxOpen && tab === active) tab.wrapper.dataset.inInbox = 'true';
     else delete tab.wrapper.dataset.inInbox;
   }
@@ -176,7 +178,8 @@ function renderInbox(): void {
 function openInbox(tab?: Tab): void {
   inboxOpen = true;
   show(tab ?? (active?.blockedAt !== undefined ? active : queue()[0]));
-  if (!active) element('inbox').focus();
+  // Focus must leave the hidden terminal, or keystrokes would reach an agent nobody can see.
+  if (!active) element(element('sidebar').hidden ? 'inbox-empty' : 'inbox').focus();
 }
 function isViewed(tab: Tab): boolean {
   return active === tab && windowActive && document.visibilityState === 'visible' && !document.querySelector('dialog[open]');
@@ -245,7 +248,6 @@ function show(tab: Tab | undefined): void {
   for (const item of tabs) {
     const selected = !inboxOpen && item === tab;
     item.button.setAttribute('aria-selected', String(selected));
-    item.button.tabIndex = selected || (inboxOpen && item === tabs[0]) ? 0 : -1;
     item.panel.hidden = item !== tab;
   }
   renderInbox();

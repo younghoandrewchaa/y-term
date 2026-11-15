@@ -116,6 +116,29 @@ export async function verifyInbox(application: ElectronApplication, page: Page):
     await emit(a.sessionId, 'state=idle'); await status(a.row, 'idle');
     await send('inbox');
     await page.locator('#inbox-empty').waitFor();
+
+    // With the sidebar hidden, the empty Inbox must not leave focus in a hidden terminal.
+    await a.row.locator('[role=tab]').click();
+    await send('toggle-sidebar');
+    await page.locator('#sidebar').waitFor({ state: 'hidden' });
+    await page.locator('[role=tabpanel]:not([hidden]) .xterm-helper-textarea').focus();
+    await send('inbox');
+    await page.locator('#inbox-empty').waitFor();
+    assert.equal(await page.evaluate(() => !!document.activeElement?.closest('[hidden]') || document.activeElement === document.body), false,
+      'keystrokes must not reach a hidden terminal');
+    await send('toggle-sidebar');
+    await page.locator('#sidebar').waitFor();
+
+    // Closing the first tab while the Inbox is open keeps the tablist reachable by keyboard.
+    await a.row.locator('[role=tab]').click();
+    await emit(a.sessionId, 'state=blocked'); await status(a.row, 'blocked');
+    await send('inbox');
+    await page.waitForFunction(id => document.querySelector('[role=tabpanel]:not([hidden])')?.getAttribute('aria-labelledby') === id, a.tabId);
+    const first = page.locator('.tab').first();
+    assert.notEqual(await first.locator('[role=tab]').getAttribute('id'), a.tabId);
+    await first.hover(); await first.getByRole('button', { name: 'Close tab' }).click();
+    assert.equal(await page.locator('[role=tab][tabindex="0"]').count(), 1);
+    await emit(a.sessionId, 'state=idle'); await status(a.row, 'idle');
     await a.row.locator('[role=tab]').click();
     await a.row.hover(); await a.row.getByRole('button', { name: 'Close tab' }).click();
   } finally {
