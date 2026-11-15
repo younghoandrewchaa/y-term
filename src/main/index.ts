@@ -111,6 +111,7 @@ function setMenu(): void {
     { label: 'View', submenu: [action('Toggle Sidebar', 'CmdOrCtrl+B', 'toggle-sidebar'), { type: 'separator' }, action('Increase Font Size', 'CmdOrCtrl+Plus', 'zoom-in'), action('Decrease Font Size', 'CmdOrCtrl+-', 'zoom-out'), action('Reset Font Size', 'CmdOrCtrl+0', 'zoom-reset'), { type: 'separator' }, { role: 'togglefullscreen' }] },
     { label: 'Window', submenu: [
       { role: 'minimize' }, { role: 'zoom' }, { type: 'separator' },
+      action('Inbox', 'Cmd+J', 'inbox'),
       action('Next Tab', 'Ctrl+Tab', 'next-tab'),
       action('Previous Tab', 'Ctrl+Shift+Tab', 'previous-tab'),
       { ...action('Next Tab', 'Cmd+Shift+]', 'next-tab'), visible: false, acceleratorWorksWhenHidden: true },
