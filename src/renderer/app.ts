@@ -1,6 +1,6 @@
 import '@xterm/xterm/css/xterm.css';
 import './styles.css';
-import { TerminalView } from './terminal-view.ts';
+import { HANGUL_FONT, TerminalView } from './terminal-view.ts';
 import { attachSidebarResize } from './sidebar-resize.ts';
 import type { AttentionSignal } from '../shared/attention.ts';
 import { AGENT_LABELS, resumeCommand } from '../shared/agent-resume.ts';
@@ -523,5 +523,6 @@ void window.terminal.getPreferences().then(value => {
     void window.terminal.savePreferences({ ...preferences }).catch(report);
   });
   applyPreferences();
-  return restoreTabs();
+  // A missing font must not block the terminal, so fall through on failure.
+  return document.fonts.load(`16px ${HANGUL_FONT}`, '한').catch(() => []).then(restoreTabs);
 }).catch(report);

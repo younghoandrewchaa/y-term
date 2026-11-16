@@ -14,6 +14,10 @@ import { decorateBranches } from './branch-actions.ts';
 import { parseAgentStatus } from '../shared/agent-status.ts';
 import type { AgentReport } from '../shared/agent-status.ts';
 
+/** Font for Korean syllables, declared in styles.css. Load it before opening terminals: xterm caches glyph widths. */
+export const HANGUL_FONT = '"Y-Term Hangul"';
+export const terminalFontFamily = (family: string): string => `${family}, ${HANGUL_FONT}`;
+
 // macOS line-editing shortcuts translated to readline control characters.
 const COMMAND_KEY_INPUT: Record<string, string> = {
   Backspace: '\x15', // Ctrl+U: delete to start of line
@@ -155,7 +159,7 @@ export class TerminalView {
   }
   focus(): void { this.fit(); this.terminal.focus(); }
   apply(preferences: Preferences): void {
-    this.terminal.options.fontFamily = preferences.fontFamily;
+    this.terminal.options.fontFamily = terminalFontFamily(preferences.fontFamily);
     this.terminal.options.fontSize = preferences.fontSize;
     this.terminal.options.scrollback = preferences.scrollback;
     this.terminal.options.theme = preferences.theme === 'dark'

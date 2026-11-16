@@ -1,3 +1,8 @@
+/* Korean fallback for the terminal. Monospace fonts such as Menlo lack Hangul, so macOS
+   borrows Apple SD Gothic Neo, whose syllables fill only ~72% of their two terminal cells and
+   look spaced out. Scaling them 120% closes most of the gap without touching neighbouring rows. */
+@font-face { font-family: "Y-Term Hangul"; font-weight: 400; src: local("AppleSDGothicNeo-Regular"); size-adjust: 120%; unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7AF, U+D7B0-D7FF; }
+@font-face { font-family: "Y-Term Hangul"; font-weight: 700; src: local("AppleSDGothicNeo-Bold"); size-adjust: 120%; unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7AF, U+D7B0-D7FF; }
 :root {
   color-scheme: dark;
   font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
