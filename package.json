@@ -21,6 +21,7 @@
     "make:release": "Y_TERM_RELEASE=1 npm run make && bash scripts/notarize-dmg.sh",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test:ci": "node --experimental-strip-types --test tests/session-manager.test.ts tests/terminal-session.test.ts tests/preferences.test.ts tests/security.test.ts tests/tab-order.test.ts tests/shell-integration.test.ts tests/terminal-shell-integration.test.ts tests/attention.test.ts tests/agent-status.test.ts tests/updates.test.ts",
     "test:e2e": "npm run build && node --experimental-strip-types scripts/smoke.ts",
     "test:quit": "npm run build && node --experimental-strip-types scripts/quit-smoke.ts",
     "test:updates": "npm run build && node --experimental-strip-types scripts/update-smoke.ts",

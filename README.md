@@ -50,6 +50,8 @@ Known shells start interactively as login shells. Finder launch therefore uses t
 
 ## Validate and package
 
+The [CI workflow](.github/workflows/ci.yml) runs on Ubuntu for every pull request (including Dependabot PRs), pushes to `main`, and manual dispatch. It installs the lockfile with `npm ci --ignore-scripts`, typechecks, runs the portable internal logic tests with `npm run test:ci`, and compiles the app with esbuild. The selected tests cover session ownership and flow control, terminal events, settings, URL restrictions, tab order, shell markers through xterm without a display, notifications, agent status, and update handling. CI skips Electron downloads, native rebuilds, GUI tests, and packaging; macOS runtime compatibility still needs the local checks below. To prevent merging a failing dependency update, make **Linux build and logic tests** a required status check in the repository's branch protection or ruleset.
+
 ```sh
 npm test
 npm run typecheck
