@@ -142,7 +142,7 @@ void app.whenReady().then(() => {
     fetchRelease: () => fetchLatestRelease((url, options) => net.fetch(url, options)),
     confirm: async () => {
       const options = {
-        type: 'warning' as const, buttons: ['Cancel', 'Update and Restart'], defaultId: 0, cancelId: 0,
+        type: 'warning' as const, buttons: ['Cancel', 'Update and Restart'], defaultId: 1, cancelId: 0,
         title: 'Update Y-Term?', message: 'Download the update and restart Y-Term?',
         detail: 'When the download finishes, Y-Term restarts and reopens your tabs in their current folders, resuming Claude and Codex sessions. Other running processes will be stopped. Save your work before continuing.',
       };
