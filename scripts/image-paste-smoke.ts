@@ -3,11 +3,14 @@ import assert from 'node:assert/strict';
 
 /** Verify native Edit > Paste reaches only the focused terminal, exactly once. */
 export async function verifyImagePaste(application: ElectronApplication, page: Page): Promise<void> {
-  const saved = await application.evaluate(({ clipboard }) => clipboard.availableFormats().map(format => ({
-    format, data: clipboard.readBuffer(format).toString('base64'),
-  })));
-  await application.evaluate(({ ipcMain }) => {
-    const state = { writes: [] as { id: string; data: string }[], listener: (_event: unknown, id: string, data: string) => { state.writes.push({ id, data }); } };
+  await application.evaluate(async ({ clipboard, ClipboardItem, ipcMain }) => {
+    // Materialize lazy clipboard data before the test replaces it. Keep native
+    // ClipboardItems in the main process so Blobs survive without serialization.
+    const saved = await Promise.all((await clipboard.read()).map(async item => {
+      const entries = await Promise.all(item.types.map(async type => [type, await item.getType(type)] as const));
+      return new ClipboardItem(Object.fromEntries(entries));
+    }));
+    const state = { saved, writes: [] as { id: string; data: string }[], listener: (_event: unknown, id: string, data: string) => { state.writes.push({ id, data }); } };
     (globalThis as any).imagePasteSmoke = state;
     ipcMain.on('terminal:write', state.listener);
   });
@@ -19,8 +22,11 @@ export async function verifyImagePaste(application: ElectronApplication, page: P
     await page.locator('[role=tabpanel]:not([hidden]) .xterm-helper-textarea').focus();
     await page.keyboard.press('Control+u');
     const [{ id }] = await takeWrites();
-    await application.evaluate(({ clipboard, nativeImage }) => {
-      clipboard.writeImage(nativeImage.createFromBitmap(Buffer.alloc(4, 255), { width: 1, height: 1 }));
+    await application.evaluate(async ({ clipboard, ClipboardItem, nativeImage }) => {
+      const image = nativeImage.createFromBitmap(Buffer.alloc(4, 255), { width: 1, height: 1 });
+      await clipboard.write([new ClipboardItem({
+        'image/png': new Blob([new Uint8Array(image.toPNG())], { type: 'image/png' }),
+      })]);
     });
     for (let index = 0; index < 2; index++) {
       await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.paste());
@@ -40,8 +46,8 @@ export async function verifyImagePaste(application: ElectronApplication, page: P
     await page.locator('[role=tabpanel]:not([hidden]) .xterm-helper-textarea').focus();
     await page.keyboard.press('Control+u');
     await takeWrites();
-    await application.evaluate(({ clipboard, BrowserWindow }) => {
-      clipboard.writeText('image paste text regression');
+    await application.evaluate(async ({ clipboard, BrowserWindow }) => {
+      await clipboard.writeText('image paste text regression');
       BrowserWindow.getAllWindows()[0].webContents.paste();
     });
     await page.waitForTimeout(100);
@@ -52,12 +58,12 @@ export async function verifyImagePaste(application: ElectronApplication, page: P
     assert.ok(!writes[0].data.includes('\x16'));
     await page.keyboard.press('Control+u');
   } finally {
-    await application.evaluate(({ clipboard, ipcMain }, saved) => {
+    await application.evaluate(async ({ clipboard, ipcMain }) => {
       const state = (globalThis as any).imagePasteSmoke;
       ipcMain.removeListener('terminal:write', state.listener);
       delete (globalThis as any).imagePasteSmoke;
       clipboard.clear();
-      for (const { format, data } of saved) clipboard.writeBuffer(format, Buffer.from(data, 'base64'));
-    }, saved);
+      if (state.saved.length) await clipboard.write(state.saved);
+    });
   }
 }
