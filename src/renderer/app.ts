@@ -282,8 +282,11 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   const statusText = document.createElement('span'); status.append(statusText, restart);
   const host = document.createElement('div'); host.className = 'terminal-host'; panel.append(status, host);
   wrapper.append(button, indicator, close); panels.append(panel);
+  // The local shell's title, kept through SSH so it returns when SSH ends.
+  let shellTitle = '';
   const view = new TerminalView(host, preferences, title => {
     if (tab.destination) return;
+    shellTitle = title;
     label.textContent = title || `Shell ${n}`;
     button.title = label.textContent;
     if (active?.button === button) updateHeader();
@@ -308,7 +311,7 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   function showRemote(destination?: string, path?: string): void {
     tab.destination = destination;
     tab.remotePath = path;
-    label.textContent = destination || tab.shell;
+    label.textContent = destination || shellTitle || `Shell ${n}`;
     directory.textContent = destination ? (path ? directoryName(path) : 'SSH') : directoryName(tab.cwd);
     button.title = destination && path ? `${destination} · ${path}` : label.textContent;
     if (active === tab) updateHeader();

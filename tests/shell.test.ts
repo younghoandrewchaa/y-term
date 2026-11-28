@@ -133,6 +133,13 @@ test('identifies the foreground SSH destination without exposing the remote comm
   assert.equal(foregroundSshOf(10, '10 1 Ss zsh\n30 10 S+ git fetch\n31 30 S+ ssh git@host'), undefined);
 });
 
+test('falls back to a generic SSH label when a spaced -o value hides the destination', () => {
+  assert.equal(foregroundSshOf(10, '30 10 S+ ssh -o ProxyCommand=nc %h %p build'), 'SSH');
+  assert.equal(foregroundSshOf(10, '30 10 S+ ssh -oRemoteCommand tmux attach build'), 'SSH');
+  assert.equal(foregroundSshOf(10, '30 10 S+ ssh -o User=deploy -vp 22 build'), 'build');
+  assert.equal(foregroundSshOf(10, '30 10 S+    ssh -oPort=22 build'), 'build');
+});
+
 test('decodes remote directory reports for display and rejects malformed paths', () => {
   assert.deepEqual(remoteDirectory('file://build/srv/release%20one'), { host: 'build', path: '/srv/release one' });
   assert.deepEqual(remoteDirectory('file:///'), { host: '', path: '/' });

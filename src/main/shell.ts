@@ -137,6 +137,8 @@ export function agentProcessOf(parent: number, snapshot: string): AgentProcess |
   return undefined;
 }
 
+const SPACED_SSH_OPTION = /^(proxycommand|localcommand|remotecommand|knownhostscommand|setenv|sendenv)(=|$)/i;
+
 /** macOS ps marks the terminal's foreground process group with + in stat. */
 export function foregroundSshOf(shell: number, snapshot: string): string | undefined {
   for (const line of snapshot.split('\n')) {
@@ -149,8 +151,12 @@ export function foregroundSshOf(shell: number, snapshot: string): string | undef
       const option = args.shift()!;
       if (option === '--') break;
       // An option argument can be attached (-p22) or occupy the next word.
-      const value = /[BbcDEeFIiJLlmOoPpQRSWw]/.exec(option);
-      if (value && value.index === option.length - 1) args.shift();
+      const flag = /[BbcDEeFIiJLlmOoPpQRSWw]/.exec(option);
+      if (!flag) continue;
+      const value = flag.index === option.length - 1 ? args.shift() : option.slice(flag.index + 1);
+      // ps drops quoting, so a spaced value such as -o "ProxyCommand nc %h %p"
+      // spills into later words and the destination can no longer be found.
+      if (flag[0] === 'o' && SPACED_SSH_OPTION.test(value ?? '')) return 'SSH';
     }
     const destination = args[0]?.replace(/^ssh:\/\//, '').replace(/\/$/, '');
     return destination && /^[\w.@:[\]%-]{1,255}$/.test(destination) ? destination : 'SSH';
@@ -164,7 +170,7 @@ export async function sessionProcessesAsync() {
     const { stdout } = await execFileAsync('/bin/ps', ['-axwo', 'pid=,ppid=,stat=,args='], {
       encoding: 'utf8', timeout: 1000, maxBuffer: 16 * 1024 * 1024,
     });
-    const commands = stdout.replace(/^(\s*\d+\s+\d+)\s+\S+ /gm, '$1 ');
+    const commands = stdout.replace(/^(\s*\d+\s+\d+)\s+\S+\s+/gm, '$1 ');
     return { agent: (pid: number) => agentProcessOf(pid, commands), ssh: (pid: number) => foregroundSshOf(pid, stdout) };
   } catch { return undefined; }
 }
