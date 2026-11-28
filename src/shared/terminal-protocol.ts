@@ -19,6 +19,7 @@ export type TerminalEvent =
   | { type: 'data'; id: string; sequence: number; data: string }
   | { type: 'integration'; id: string; nonce: string }
   | { type: 'directory'; id: string; cwd: string }
+  | { type: 'ssh'; id: string; destination?: string }
   | { type: 'agent'; id: string; agent?: string; agentPid?: number }
   | { type: 'exit'; id: string; exitCode: number; signal?: number; error?: string };
 /** A repository's root and local branch names, as Git reports them. */

@@ -5,6 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { parseOsc777, parseOsc9 } from '../shared/attention.ts';
 import type { AttentionSignal } from '../shared/attention.ts';
 import type { Preferences } from '../shared/terminal-protocol.ts';
+import { remoteDirectory } from '../shared/remote-directory.ts';
 import { TerminalSession } from './terminal-session.ts';
 import { attachTerminalFileDrop } from './file-drop.ts';
 import { attachTerminalImagePaste } from './image-paste.ts';
@@ -38,7 +39,7 @@ export class TerminalView {
   private removeImagePaste: () => void;
   private host: HTMLElement;
 
-  constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, directory: (cwd: string) => void, agent: (name?: string, pid?: number) => void, attention: (signal: AttentionSignal) => void, agentStatus: (report: AgentReport) => void, ended: () => void) {
+  constructor(host: HTMLElement, preferences: Preferences, title: (value: string) => void, status: (message: string) => void, directory: (cwd: string) => void, agent: (name?: string, pid?: number) => void, attention: (signal: AttentionSignal) => void, agentStatus: (report: AgentReport) => void, ended: () => void, remote: (destination?: string, path?: string) => void) {
     this.host = host;
     const activateFile = (event: MouseEvent, path: string) => {
       if ((event.metaKey || event.ctrlKey) && this.session.id) {
@@ -65,9 +66,33 @@ export class TerminalView {
     this.terminal.loadAddon(new WebLinksAddon(activateLink));
     this.terminal.registerLinkProvider(createFileLinkProvider(this.terminal, activateFile));
     this.terminal.open(host);
+    let destination: string | undefined;
+    let pendingDirectory: ReturnType<typeof remoteDirectory>;
+    let hostBeforeCommand: string | undefined;
+    let submitted = false;
+    this.terminal.parser.registerOscHandler(7, data => {
+      const report = remoteDirectory(data);
+      if (report && !this.exited) {
+        if (destination) remote(destination, report.path);
+        else pendingDirectory = report;
+      }
+      return true;
+    });
     this.session = new TerminalSession(window.terminal, {
       write: (data, processed) => this.terminal.write(data, processed),
       exited: message => { this.exited = true; this.terminal.options.disableStdin = true; ended(); status(message); },
+      ssh: next => {
+        destination = next;
+        const host = next?.split('@').pop()?.toLowerCase();
+        // The first remote prompt can arrive before the next process poll. Its
+        // hostname may differ from the SSH config alias the user typed.
+        const reportedHost = pendingDirectory?.host.toLowerCase();
+        const earlyPath = reportedHost === host || (submitted && reportedHost !== hostBeforeCommand)
+          ? pendingDirectory?.path : undefined;
+        pendingDirectory = undefined;
+        submitted = false;
+        remote(next, earlyPath);
+      },
       directory,
       agent,
       integration: nonce => { this.commands.nonce = nonce; },
@@ -85,7 +110,14 @@ export class TerminalView {
       focus: () => this.terminal.focus(),
       report: status,
     });
-    this.terminal.onData(data => { if (this.session.id) window.terminal.write(this.session.id, data); });
+    this.terminal.onData(data => {
+      if (!destination && /[\r\n]/.test(data)) {
+        hostBeforeCommand = pendingDirectory?.host.toLowerCase();
+        pendingDirectory = undefined;
+        submitted = true;
+      }
+      if (this.session.id) window.terminal.write(this.session.id, data);
+    });
     this.terminal.attachCustomKeyEventHandler(event => {
       const commandInput = event.metaKey && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.isComposing
         ? COMMAND_KEY_INPUT[event.key]

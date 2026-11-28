@@ -99,7 +99,7 @@ h3 { font-size: 17px; margin: 0 0 8px; }
 /* Mock app window */
 .window {
   display: flex; text-align: left;
-  margin: 56px auto 0; max-width: 900px; height: 380px;
+  margin: 56px auto 0; max-width: 900px; min-height: 380px;
   border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
   background: var(--surface);
   box-shadow: 0 30px 80px rgba(0, 0, 0, .35);

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Y-Term — your terminal, augmented</title>
-  <meta name="description" content="Y-Term augments your macOS terminal with icons and one-click commands beside your output: git branch actions, VS Code diffs, agent status, an Inbox of agents waiting for you, and clickable links. For Apple Silicon.">
+  <meta name="description" content="Y-Term augments your macOS terminal with icons and one-click commands beside your output: git branch actions, VS Code diffs, SSH destinations, agent status, an Inbox of agents waiting for you, and clickable links. For Apple Silicon.">
   <link rel="icon" href="icon.png">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -23,7 +23,7 @@
     <section class="hero">
       <img class="hero-icon" src="icon.png" alt="Y-Term icon" width="96" height="96">
       <h1>Your terminal, augmented.</h1>
-      <p class="lede">Y-Term is a native-feeling terminal for Apple Silicon that keeps your real shell and adds to it. Icons and one-click commands appear right beside your output: copy or delete a branch from <code>git branch</code>, open a changed file as a VS Code diff, and see at a glance which coding agent needs you. Agents waiting for an answer gather in an Inbox, so you can reply to each in turn.</p>
+      <p class="lede">Y-Term is a native-feeling terminal for Apple Silicon that keeps your real shell and adds to it. Icons and one-click commands appear right beside your output: copy or delete a branch from <code>git branch</code>, open a changed file as a VS Code diff, and see at a glance which coding agent needs you. The sidebar identifies SSH tabs by destination. Agents waiting for an answer gather in an Inbox, so you can reply to each in turn.</p>
       <div class="cta">
         <a class="button primary" href="https://github.com/younghoandrewchaa/y-term/releases/latest">Download for Apple Silicon</a>
         <a class="button" href="https://github.com/younghoandrewchaa/y-term">View source</a>
@@ -33,13 +33,14 @@
       <div class="window" aria-hidden="true">
         <aside class="win-sidebar">
           <div class="lights"><span></span><span></span><span></span></div>
-          <div class="win-heading">Sessions <span>4</span></div>
+          <div class="win-heading">Sessions <span>5</span></div>
           <div class="win-inbox"><svg viewBox="0 0 24 24"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M6 5h12l2 8v6H4v-6Z"/></svg><span>Inbox</span><b>1</b></div>
           <div class="win-tab agent" data-status="blocked"><svg viewBox="0 0 24 24"><path d="M12 3c.6 4.6 2.4 6.4 7 7-4.6.6-6.4 2.4-7 7-.6-4.6-2.4-6.4-7-7 4.6-.6 6.4-2.4 7-7Z"/><path d="M19 16v4M17 18h4"/></svg><span class="win-tab-text">Codex<small>api<b>Blocked</b></small></span></div>
           <div class="win-tab agent" data-status="done"><svg viewBox="0 0 24 24"><path d="M12 3c.6 4.6 2.4 6.4 7 7-4.6.6-6.4 2.4-7 7-.6-4.6-2.4-6.4-7-7 4.6-.6 6.4-2.4 7-7Z"/><path d="M19 16v4M17 18h4"/></svg><span class="win-tab-text">Claude Code<small>site<b>Done</b></small></span></div>
           <div class="win-tab agent" data-status="working"><svg viewBox="0 0 24 24"><path d="M12 3c.6 4.6 2.4 6.4 7 7-4.6.6-6.4 2.4-7 7-.6-4.6-2.4-6.4-7-7 4.6-.6 6.4-2.4 7-7Z"/><path d="M19 16v4M17 18h4"/></svg><span class="win-tab-text">Claude Code<small>y-term<b>Working</b></small></span></div>
           <div class="win-tab active"><svg viewBox="0 0 24 24"><path d="m5 7 5 5-5 5M13 17h6"/></svg><span class="win-tab-text">zsh<small>y-term</small></span></div>
-          <div class="win-version">Y-Term 0.1.18</div>
+          <div class="win-tab"><svg viewBox="0 0 24 24"><path d="m5 7 5 5-5 5M13 17h6"/></svg><span class="win-tab-text">deploy@build<small>releases</small></span></div>
+          <div class="win-version">Y-Term 0.1.20</div>
         </aside>
         <div class="win-main">
           <div class="win-header"><span>zsh · Local</span><span class="muted">~/github/y-term</span></div>
@@ -64,7 +65,7 @@
         </article>
         <article>
           <h3>Tabs that follow you</h3>
-          <p>Sessions live in a resizable sidebar. A new tab opens beside the one you opened it from, in that shell's current directory, and closing a tab cleanly terminates its child processes. Drag a tab up or down to put your sessions in the order you want. Hold ⌘ to number your tabs, and press ⌘1–⌘9 to jump to one.</p>
+          <p>Sessions live in a resizable sidebar. SSH tabs show the destination and, when the remote shell reports it, the current remote directory. A new tab opens beside the one you opened it from, in that shell's current directory, and closing a tab cleanly terminates its child processes. Drag a tab up or down to put your sessions in the order you want. Hold ⌘ to number your tabs, and press ⌘1–⌘9 to jump to one.</p>
         </article>
         <article>
           <h3>An Inbox for your agents</h3>
@@ -117,7 +118,7 @@
       <h2>Keyboard shortcuts</h2>
       <table>
         <tbody>
-          <tr><td><kbd>⌘T</kbd></td><td>New tab in the current directory</td></tr>
+          <tr><td><kbd>⌘T</kbd></td><td>New local tab in the current local directory</td></tr>
           <tr><td><kbd>⌘W</kbd></td><td>Close tab and end its shell (asks first while an agent is working)</td></tr>
           <tr><td><kbd>⌃Tab</kbd> / <kbd>⇧⌘]</kbd></td><td>Next tab</td></tr>
           <tr><td><kbd>⌃⇧Tab</kbd> / <kbd>⇧⌘[</kbd></td><td>Previous tab</td></tr>

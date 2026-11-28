@@ -28,7 +28,7 @@ const settings = element<HTMLDialogElement>('settings');
 const settingsForm = element<HTMLFormElement>('settings-form');
 const findBar = element('find-bar');
 const findInput = element<HTMLInputElement>('find-input');
-interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; shell: string; agent?: string; agentPid?: number; attention: boolean; agentStatus: AgentStatusState; statusLabel: HTMLElement; lastStatusNotification: number; opener?: Tab; number: HTMLElement; blockedAt?: number }
+interface Tab { button: HTMLButtonElement; label: HTMLElement; wrapper: HTMLElement; panel: HTMLElement; view: TerminalView; cwd: string; destination?: string; remotePath?: string; shell: string; agent?: string; agentPid?: number; attention: boolean; agentStatus: AgentStatusState; statusLabel: HTMLElement; lastStatusNotification: number; opener?: Tab; number: HTMLElement; blockedAt?: number }
 const tabs: Tab[] = [];
 let active: Tab | undefined;
 let preferences: Preferences;
@@ -141,8 +141,8 @@ function updateHeader(): void {
   const title = active?.label.textContent || 'Y-Term';
   const position = inboxOpen ? inboxPosition(queue(), active) : undefined;
   element('active-title').textContent = !inboxOpen ? title : position ? `Inbox · ${position.position} of ${position.count} · ${title}` : 'Inbox';
-  element('active-directory').textContent = active?.cwd || '';
-  element('active-shell').textContent = active ? `${active.agent ?? active.shell} · Local` : 'Local';
+  element('active-directory').textContent = (active?.destination ? active.remotePath : active?.cwd) || '';
+  element('active-shell').textContent = active?.destination ? 'SSH' : active ? `${active.agent ?? active.shell} · Local` : 'Local';
   element('session-count').textContent = String(tabs.length);
   element('empty-state').hidden = tabs.length > 0;
 }
@@ -283,6 +283,7 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
   const host = document.createElement('div'); host.className = 'terminal-host'; panel.append(status, host);
   wrapper.append(button, indicator, close); panels.append(panel);
   const view = new TerminalView(host, preferences, title => {
+    if (tab.destination) return;
     label.textContent = title || `Shell ${n}`;
     button.title = label.textContent;
     if (active?.button === button) updateHeader();
@@ -290,7 +291,7 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
     statusText.textContent = value; status.hidden = false;
   }, cwd => {
     tab.cwd = cwd;
-    directory.textContent = directoryName(cwd);
+    if (!tab.destination) directory.textContent = directoryName(cwd);
     if (active === tab) updateHeader();
   }, (agent, agentPid) => {
     if (tab.agent && (tab.agent !== agent || tab.agentPid !== agentPid)) updateAgentStatus(tab, { type: 'reset' });
@@ -303,7 +304,15 @@ async function newTab(restore?: RestoredTab): Promise<Tab | undefined> {
     else delete wrapper.dataset.agent;
     if (active === tab) updateHeader();
   }, signal => needsAttention(tab, signal), report => updateAgentStatus(tab, { type: 'report', report, viewed: isViewed(tab) }),
-  () => updateAgentStatus(tab, { type: 'reset' }));
+  () => { if (tab.destination) showRemote(); updateAgentStatus(tab, { type: 'reset' }); }, showRemote);
+  function showRemote(destination?: string, path?: string): void {
+    tab.destination = destination;
+    tab.remotePath = path;
+    label.textContent = destination || tab.shell;
+    directory.textContent = destination ? (path ? directoryName(path) : 'SSH') : directoryName(tab.cwd);
+    button.title = destination && path ? `${destination} · ${path}` : label.textContent;
+    if (active === tab) updateHeader();
+  }
   const tab: Tab = { button, label, wrapper, panel, view, cwd: initialCwd, shell: preferences.shell.split('/').pop() || preferences.shell,
     attention: false, agentStatus: { unseenCompletion: false }, statusLabel, lastStatusNotification: 0, opener: source, number };
   const index = insertAfterOpener(tabs, tab, source, item => item.opener);

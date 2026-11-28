@@ -5,6 +5,7 @@ interface Output {
   exited(message: string): void;
   directory(cwd: string): void;
   agent(name?: string, pid?: number): void;
+  ssh?(destination?: string): void;
   integration(nonce: string): void;
 }
 
@@ -24,6 +25,7 @@ export class TerminalSession {
           if (!this.closed) api.acknowledge(event.id, event.sequence);
         });
       } else if (event.type === 'directory') output.directory(event.cwd);
+      else if (event.type === 'ssh') output.ssh?.(event.destination);
       else if (event.type === 'agent') output.agent(event.agent, event.agentPid);
       else if (event.type === 'integration') output.integration(event.nonce);
       else if (event.type === 'exit') output.exited(event.error ?? `Shell exited with status ${event.exitCode}${event.signal ? ` (signal ${event.signal})` : ''}. Open a new tab to start a fresh shell.`);

@@ -1,6 +1,7 @@
 import test from 'node:test';
+import { remoteDirectory } from '../src/shared/remote-directory.ts';
 import assert from 'node:assert/strict';
-import { agentName, agentOf, agentProcessOf, buildShellLaunch, descendantsOf, directoriesFromLsof, shellCurrentDirectoriesAsync, shellCurrentDirectory, usableDirectory } from '../src/main/shell.ts';
+import { foregroundSshOf, agentName, agentOf, agentProcessOf, buildShellLaunch, descendantsOf, directoriesFromLsof, shellCurrentDirectoriesAsync, shellCurrentDirectory, usableDirectory } from '../src/main/shell.ts';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
@@ -121,5 +122,21 @@ test('skips integration when disabled or for other shells', () => {
     assert.equal(env.ZDOTDIR, '/u/zdot');
     assert.equal(env.Y_TERM_USER_ZDOTDIR, undefined);
     assert.equal(env.Y_TERM_SHELL_INTEGRATION_NONCE, undefined);
+  }
+});
+
+test('identifies the foreground SSH destination without exposing the remote command', () => {
+  const snapshot = '10 1 Ss zsh\n20 10 S ssh background\n30 10 S+ /usr/bin/ssh -p 2222 -J gateway user@build uptime';
+  assert.equal(foregroundSshOf(10, snapshot), 'user@build');
+  assert.equal(foregroundSshOf(20, snapshot), undefined);
+  assert.equal(foregroundSshOf(10, '10 1 S+ ssh -- build'), 'build');
+  assert.equal(foregroundSshOf(10, '10 1 Ss zsh\n30 10 S+ git fetch\n31 30 S+ ssh git@host'), undefined);
+});
+
+test('decodes remote directory reports for display and rejects malformed paths', () => {
+  assert.deepEqual(remoteDirectory('file://build/srv/release%20one'), { host: 'build', path: '/srv/release one' });
+  assert.deepEqual(remoteDirectory('file:///'), { host: '', path: '/' });
+  for (const value of ['file://build', 'https://build/file', 'file://build/%00', 'file://build/%xx', 'file://build/%E2%80%AEevil']) {
+    assert.equal(remoteDirectory(value), undefined);
   }
 });

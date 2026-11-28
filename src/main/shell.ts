@@ -137,13 +137,35 @@ export function agentProcessOf(parent: number, snapshot: string): AgentProcess |
   return undefined;
 }
 
+/** macOS ps marks the terminal's foreground process group with + in stat. */
+export function foregroundSshOf(shell: number, snapshot: string): string | undefined {
+  for (const line of snapshot.split('\n')) {
+    const match = /^\s*(\d+)\s+(\d+)\s+(\S+)\s+(\S+)\s+(.*)$/.exec(line);
+    if (!match) continue;
+    const [, pid, parent, state, program, command] = match;
+    if ((Number(pid) !== shell && Number(parent) !== shell) || !state.includes('+') || basename(program) !== 'ssh') continue;
+    const args = command.trim().split(/\s+/);
+    while (args[0]?.startsWith('-')) {
+      const option = args.shift()!;
+      if (option === '--') break;
+      // An option argument can be attached (-p22) or occupy the next word.
+      const value = /[BbcDEeFIiJLlmOoPpQRSWw]/.exec(option);
+      if (value && value.index === option.length - 1) args.shift();
+    }
+    const destination = args[0]?.replace(/^ssh:\/\//, '').replace(/\/$/, '');
+    return destination && /^[\w.@:[\]%-]{1,255}$/.test(destination) ? destination : 'SSH';
+  }
+  return undefined;
+}
+
 /** One process snapshot serves every tab; undefined keeps the previous state on failure. */
-export async function runningAgentsAsync(): Promise<((pid: number) => AgentProcess | undefined) | undefined> {
+export async function sessionProcessesAsync() {
   try {
-    const { stdout } = await execFileAsync('/bin/ps', ['-axo', 'pid=,ppid=,args='], {
+    const { stdout } = await execFileAsync('/bin/ps', ['-axwo', 'pid=,ppid=,stat=,args='], {
       encoding: 'utf8', timeout: 1000, maxBuffer: 16 * 1024 * 1024,
     });
-    return pid => agentProcessOf(pid, stdout);
+    const commands = stdout.replace(/^(\s*\d+\s+\d+)\s+\S+ /gm, '$1 ');
+    return { agent: (pid: number) => agentProcessOf(pid, commands), ssh: (pid: number) => foregroundSshOf(pid, stdout) };
   } catch { return undefined; }
 }
 

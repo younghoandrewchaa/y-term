@@ -12,6 +12,7 @@ interface Session {
   cwd?: string;
   agent?: string;
   agentPid?: number;
+  ssh?: string;
   pty: PtyProcess;
   ready: boolean;
   ended: boolean;
@@ -176,6 +177,15 @@ export class SessionManager {
       if (!cwd || session.ended || this.sessions.get(id) !== session || cwd === session.cwd) continue;
       session.cwd = cwd;
       this.deliver(session, { type: 'directory', id, cwd });
+    }
+  }
+
+  refreshSsh(lookup: (pid: number) => string | undefined): void {
+    for (const [id, session] of this.sessions) {
+      const destination = session.ended ? undefined : lookup(session.pty.pid);
+      if (destination === session.ssh) continue;
+      session.ssh = destination;
+      this.deliver(session, { type: 'ssh', id, destination });
     }
   }
 
